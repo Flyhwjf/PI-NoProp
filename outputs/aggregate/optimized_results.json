@@ -1,0 +1,96 @@
+{
+  "centre": {
+    "local_fast_divpp_centre": {
+      "method": "pi_noprop_local_fast",
+      "n_runs": 3,
+      "accuracy_mean": 33.333333333333336,
+      "accuracy_std": 6.505206248331665,
+      "eta_div_mean": 0.17082422971725464,
+      "eta_pp_mean": 0.2551383127768834,
+      "train_seconds_mean": 21.4104750000018,
+      "peak_memory_mb_mean": 499.3486328125,
+      "seeds": [
+        0,
+        1,
+        2
+      ]
+    },
+    "local_fast_none_centre": {
+      "method": "pi_noprop_local_fast",
+      "n_runs": 3,
+      "accuracy_mean": 33.333333333333336,
+      "accuracy_std": 6.505206248331665,
+      "eta_div_mean": 0.4202874203523,
+      "eta_pp_mean": 0.6318106055259705,
+      "train_seconds_mean": 9.853047266699528,
+      "peak_memory_mb_mean": 285.6982421875,
+      "seeds": [
+        0,
+        1,
+        2
+      ]
+    },
+    "local_fast_pp_centre": {
+      "method": "pi_noprop_local_fast",
+      "n_runs": 3,
+      "accuracy_mean": 31.25,
+      "accuracy_std": 0.0,
+      "eta_div_mean": 0.4773796896139781,
+      "eta_pp_mean": 0.31820517778396606,
+      "train_seconds_mean": 21.55123199999798,
+      "peak_memory_mb_mean": 499.3486328125,
+      "seeds": [
+        0,
+        1,
+        2
+      ]
+    }
+  },
+  "edge": {
+    "local_fast_divpp_edge": {
+      "method": "pi_noprop_local_fast",
+      "n_runs": 3,
+      "accuracy_mean": 26.041666666666668,
+      "accuracy_std": 1.8042195912175805,
+      "eta_div_mean": 0.1011124700307846,
+      "eta_pp_mean": 0.21075061957041422,
+      "train_seconds_mean": 19.795380066672806,
+      "peak_memory_mb_mean": 499.3486328125,
+      "seeds": [
+        0,
+        1,
+        2
+      ]
+    },
+    "local_fast_none_edge": {
+      "method": "pi_noprop_local_fast",
+      "n_runs": 3,
+      "accuracy_mean": 27.083333333333332,
+      "accuracy_std": 3.608439182435161,
+      "eta_div_mean": 0.41327284773190814,
+      "eta_pp_mean": 0.51818319161733,
+      "train_seconds_mean": 9.345122566679493,
+      "peak_memory_mb_mean": 285.6982421875,
+      "seeds": [
+        0,
+        1,
+        2
+      ]
+    },
+    "local_fast_pp_edge": {
+      "method": "pi_noprop_local_fast",
+      "n_runs": 3,
+      "accuracy_mean": 27.083333333333332,
+      "accuracy_std": 3.608439182435161,
+      "eta_div_mean": 0.40207283695538837,
+      "eta_pp_mean": 0.24817738930384317,
+      "train_seconds_mean": 19.48904943332309,
+      "peak_memory_mb_mean": 499.3486328125,
+      "seeds": [
+        0,
+        1,
+        2
+      ]
+    }
+  }
+}

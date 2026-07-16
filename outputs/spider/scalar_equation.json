@@ -1,0 +1,22 @@
+{
+  "coefficients": [
+    -0.7899573445320129,
+    0.08504616469144821,
+    -0.3245975971221924,
+    0.5131967663764954
+  ],
+  "terms": [
+    "scalar_field",
+    "scalar_sq",
+    "scalar_laplacian",
+    "vector_magsq_field"
+  ],
+  "active_terms": [
+    "scalar_field",
+    "scalar_sq",
+    "scalar_laplacian",
+    "vector_magsq_field"
+  ],
+  "inactive_terms": [],
+  "viscosity_input": 0.005
+}

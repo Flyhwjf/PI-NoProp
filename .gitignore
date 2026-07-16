@@ -1,0 +1,87 @@
+# -----------------------------------------------------------------------------
+# Local and private project material
+# -----------------------------------------------------------------------------
+# HIT arrays and derived caches are several GB and are not suitable for Git.
+/data/
+
+# Superseded snapshots, supervisor-provided source material, and local tools.
+/_archive/
+/初始/
+/.claude/
+/.vscode/
+
+# Local environment and secret files. Keep an example file explicitly if added.
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+
+# -----------------------------------------------------------------------------
+# Experiment artifacts
+# -----------------------------------------------------------------------------
+# Ignore generated experiments by default, then retain the small JSON artifacts
+# needed to audit the paper's reported results and discovered equation.
+# Ignore each first-level output entry. Unlike `/outputs/**`, this still allows
+# selected child directories to be re-included below.
+/outputs/*
+!/outputs/aggregate/
+!/outputs/spider/
+
+# Prevent large ML/data artifacts from being added elsewhere by accident.
+*.pt
+*.pth
+*.ckpt
+*.npy
+*.npz
+*.h5
+*.hdf5
+*.zarr/
+*.log
+
+# -----------------------------------------------------------------------------
+# Python
+# -----------------------------------------------------------------------------
+__pycache__/
+*.py[cod]
+*$py.class
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+build/
+dist/
+*.egg-info/
+.venv/
+venv/
+
+# Jupyter
+.ipynb_checkpoints/
+
+# -----------------------------------------------------------------------------
+# LaTeX (keep .tex, figures, bibliography, and the final PDF)
+# -----------------------------------------------------------------------------
+paper/*.aux
+paper/*.bbl
+paper/*.blg
+paper/*.fdb_latexmk
+paper/*.fls
+paper/*.lof
+paper/*.lot
+paper/*.log
+paper/*.out
+paper/*.spl
+paper/*.synctex.gz
+paper/*.toc
+
+# -----------------------------------------------------------------------------
+# Editors and operating systems
+# -----------------------------------------------------------------------------
+.idea/
+*.code-workspace
+.DS_Store
+Thumbs.db
+Desktop.ini
+*~
+*.swp

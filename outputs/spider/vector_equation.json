@@ -1,0 +1,16 @@
+{
+  "coefficients": [
+    -0.7071067690849304,
+    0.7071067690849304
+  ],
+  "terms": [
+    "field_time_deriv",
+    "field_time_deriv_scalar"
+  ],
+  "active_terms": [
+    "field_time_deriv",
+    "field_time_deriv_scalar"
+  ],
+  "inactive_terms": [],
+  "viscosity_input": 0.005
+}

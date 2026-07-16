@@ -1,0 +1,72 @@
+{
+  "dataset_facts": {
+    "source": "in-house forced HIT DNS",
+    "grid": 64,
+    "viscosity": 0.005,
+    "solver_dt": 0.001,
+    "snapshot_stride_steps": 50,
+    "snapshot_dt": 0.05,
+    "n_snapshots": 80,
+    "subdomain_shape": [
+      32,
+      32,
+      32
+    ],
+    "frames_per_npz": 32,
+    "re_lambda_final": 30.5,
+    "u_rms_final": 0.1084
+  },
+  "legacy_spider_saved_output": {
+    "vector_terms": [
+      "field_time_deriv",
+      "field_time_deriv_scalar"
+    ],
+    "vector_coefficients": [
+      -0.7071067690849304,
+      0.7071067690849304
+    ],
+    "scalar_terms": [
+      "scalar_field",
+      "scalar_sq",
+      "scalar_laplacian",
+      "vector_magsq_field"
+    ],
+    "scalar_coefficients": [
+      -0.7899573445320129,
+      0.08504616469144821,
+      -0.3245975971221924,
+      0.5131967663764954
+    ],
+    "direct_full_ns_recovery": false,
+    "direct_pressure_poisson_recovery": false
+  },
+  "validated_spatial_spider": {
+    "terms": [
+      "pressure_laplacian",
+      "convection_divergence"
+    ],
+    "coefficients": [
+      1.0,
+      0.29299850015827145
+    ],
+    "validation_passed": true,
+    "validation_eta": 0.2861037736803848,
+    "bootstrap_support_fraction": 1.0,
+    "direct_pressure_poisson_structure_recovery": true,
+    "used_by_optimized_training": true
+  },
+  "constraint_provenance": {
+    "continuity": "prescribed from incompressible HIT solver",
+    "navier_stokes": "prescribed from the DNS governing equations",
+    "pressure_poisson_analytic_baseline": "analytically derived from Navier-Stokes + continuity",
+    "pressure_poisson_discovered": "selected and fitted by spatial weak-form SPIDER on 60 snapshots; validated on 20 disjoint snapshots",
+    "continuity_in_training": "prescribed; not claimed as a new discovery"
+  },
+  "paper_guardrails": [
+    "Do not state that the saved SPIDER output directly recovered full Navier-Stokes.",
+    "Distinguish the failed legacy broad-library output from the validated spatial SPIDER artifact.",
+    "State that spatial SPIDER recovered PP structure and an effective coefficient; do not claim full Navier-Stokes recovery.",
+    "Report Re_lambda=30.5 for the generated dataset, not 55--140.",
+    "Report solver dt=0.001 and snapshot spacing 0.05."
+  ]
+}
