@@ -26,6 +26,10 @@ class DataConfig:
     split_seed: int = 42
     pin_memory: bool = True
     cache_on_device: bool = True
+    trajectory_disjoint: bool = False
+    ns_term_means: List[float] = field(default_factory=lambda: [0.0, 0.0, 0.0])
+    ns_term_covariance: List[List[float]] = field(default_factory=lambda: [
+        [1.0, 0.0, 0.0], [0.0, 1.0, 0.0], [0.0, 0.0, 1.0]])
 
 
 @dataclass
@@ -57,6 +61,7 @@ class DecoderConfig:
     use_conv: bool = True
     n_upsample_layers: int = 3          # 4→8→16→32
     use_compact_physics_decoder: bool = True
+    use_temporal_decoder: bool = False
 
 
 @dataclass
@@ -72,8 +77,19 @@ class PhysicsConfig:
     use_pressure_poisson: bool = True
     use_energy: bool = False
     spatial_only: bool = True
-    pressure_poisson_weight: float = 0.5
+    pressure_poisson_weight: float = 0.25
     physics_grid_size: int = 16
+    use_full_ns: bool = False
+    discovered_artifact: str = 'outputs/spider/hit_full_ns_v2.json'
+    dns_grid_size: int = 64
+    box_length: float = 6.283185307179586
+    snapshot_dt: float = 0.002
+    divergence_weight: float = 0.25
+    energy_weight: float = 0.25
+    # Coefficients of [convection, pressure gradient, velocity Laplacian]
+    # after fixing the time-derivative coefficient to one.  ``None`` is the
+    # no-equation ablation and disables the physics condition branch.
+    condition_coefficients: Optional[List[float]] = None
 
 
 @dataclass

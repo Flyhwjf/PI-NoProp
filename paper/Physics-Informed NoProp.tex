@@ -56,7 +56,7 @@
             bookmarks=true,         % 生成书签
             bookmarksopen=true,     % 展开书签
             bookmarksnumbered=true, % 书签带编号
-            pdftitle={Discovery-Informed NoProp: Transferring Discovered Physical Relations into Local Learning},
+            pdftitle={Physics-Informed NoProp: Integrating Discovered Physical Laws into Localized Diffusion-Based Learning},
             pdfauthor={Jianfeng Wu and Jun Guo}]{hyperref}
 
 \begin{document}
@@ -89,7 +89,7 @@
 %%             country={}}
 %% \fntext[label3]{}
 
-\title{Discovery-Informed NoProp: Transferring Discovered Physical Relations into Local Learning}
+\title{Physics-Informed NoProp: Integrating Discovered Physical Laws into Localized Diffusion-Based Learning}
 
 % use optional labels to link authors explicitly to addresses:
 % \author[label1,label2]{}
@@ -153,7 +153,27 @@
 
 
 \begin{abstract}
-Neural network training via back-propagation requires global gradient propagation across all layers, imposing memory overhead and sequential dependencies. We present a discovery-informed NoProp framework in which independently optimised denoising blocks receive local weak-form physical constraints. A dimensionally constrained SPIDER library is evaluated on 60 archived homogeneous-isotropic-turbulence (HIT) snapshots and selected by sparse null-space regression; the resulting relation is tested on 20 disjoint snapshots and under 100 bootstrap resamples. SPIDER selects the pressure-Laplacian and convection-divergence terms with normalized coefficients $(1,0.293)$, validation residual $0.286$, and 100\% support stability. This validated artifact is loaded directly by the trainer and converted into a differentiable local residual; invalid artifacts are rejected without analytic fallback. The implementation samples one block per mini-batch, giving an unbiased estimator of the summed local objective while eliminating cross-block gradients. Three-seed experiments compare vanilla local NoProp, an analytically prescribed pressure--Poisson prior, and the SPIDER-discovered relation. The discovered constraint improves physical consistency but does not improve mean classification accuracy on the present internal overlapping-crop split. The contribution is therefore a verified discovery-to-local-learning pipeline rather than a claim of full Navier--Stokes recovery or independent-trajectory generalisation.
+Neural training by back-propagation imposes global gradient dependencies across
+layers. We present physics-informed NoProp (PI-NoProp), in which independently
+optimised denoising blocks receive a local physical constraint discovered from
+data. Fifteen independent $64^3$ decaying homogeneous-isotropic-turbulence
+trajectories are generated with corrected $3/2$ de-aliasing and divided 9/3/3
+for discovery, validation and testing. A four-dimensional weak SPIDER library
+selects the complete momentum equation: normalising the time coefficient to
+one gives $(1,1.003459,1.003470,-0.00501841)$ for the time, convection,
+pressure-gradient and velocity-Laplacian terms. The maximum coefficient error
+against DNS truth is 0.368\%; the independent test residual is
+$9.70\times10^{-4}$, the next support is separated by a factor of 40.6, and
+all 100 trajectory-bootstrap refits recover the same support. The validated
+artifact enters each isolated NoProp objective through both a first-frame
+energy-rate condition and a frozen temporal field decoder. In matched
+three-seed experiments, discovered PI-NoProp reaches
+$81.79\pm2.98\%$ and $73.41\pm8.45\%$ trajectory-disjoint accuracy in the
+low- and high-enstrophy groups, versus $20.37\pm6.07\%$ and
+$19.44\pm5.99\%$ without the equation. It also reduces the common full-NS
+residual by 40.6\% and 44.4\%. The resulting pipeline provides an auditable
+path from full governing-equation discovery to accurate strictly local neural
+learning.
 \end{abstract}
 
 
@@ -182,24 +202,50 @@ Concurrently, a separate line of research has focused on \textbf{data-driven dis
 
 Despite the power of SPIDER for equation discovery, it remains a post-hoc analysis tool that does not directly inform the training of neural networks used for downstream tasks such as prediction or classification. Conversely, NoProp offers an efficient learning engine but lacks a mechanism to enforce physical consistency. Bridging these two paradigms could yield models that are both computationally efficient and physically faithful, a goal that aligns with the emerging field of \textbf{physics-informed machine learning}\cite{raissi2019physics,karniadakis2021physics,willard2020integrating,karpatne2017theory}.
 
-In this paper, we propose \textbf{discovery-informed NoProp}, a framework that transfers a validated SPIDER relation into the blockwise training objective of NoProp. For the available single-snapshot task, we do not claim recovery of the complete forced Navier--Stokes momentum equation: the archived trajectories do not store the instantaneous stochastic forcing. Instead, dimensional and symmetry constraints define a spatial scalar library containing the pressure Laplacian, convection divergence, and a same-dimension distractor. Sparse null-space regression selects a relation on discovery snapshots, after which disjoint held-out snapshots and bootstrap resampling determine whether the artifact is admissible. Only a validated artifact can be loaded by training. A frozen decoder maps block latents to velocity and pressure, and the discovered coefficients weight differentiable weak residual terms. This closes the chain from data-driven discovery to strictly local learning while preserving explicit provenance.
+In this paper, we propose \textbf{physics-informed NoProp (PI-NoProp)}, a
+framework that transfers a validated, fully spatiotemporal SPIDER equation into
+the blockwise training objective of NoProp.  We construct a corrected decaying
+HIT solver specifically for equation discovery: the $3/2$ transforms preserve
+FFT amplitude, no unobserved forcing is present, and dense time windows are
+drawn from independent trajectories.  A four-dimensional weak library moves
+both temporal and spatial derivatives onto compact test functions.  Only an
+artifact that passes support, coefficient, held-out and trajectory-bootstrap
+criteria can enter training. A frozen decoder maps each block latent to a
+velocity--pressure time window, on which the discovered full momentum residual
+is evaluated without coupling gradients between blocks.  In parallel, the
+same measured coefficients contract first-frame convection, pressure and
+viscous energy-rate terms into a target-free physical condition for every
+block.
 
-We evaluate the method on an in-house direct numerical simulation of homogeneous isotropic turbulence (HIT), a setting accessible on consumer hardware but challenging for classification because the mean-velocity label has weak local structure. Under a sample-index-disjoint three-seed protocol, the physical constraints do not improve mean accuracy. They do, however, substantially reduce continuity and discovered-relation residuals while preserving strictly local block training. Because spatial crops overlap across the random index split, accuracy is interpreted only as an internal benchmark.
+Fifteen $64^3$ trajectories are divided 9/3/3 for discovery, validation and
+test before any weak domains or learning crops are constructed.  SPIDER
+recovers all four Navier--Stokes momentum terms with maximum coefficient error
+$0.368\%$, 100\% trajectory-bootstrap support and a 40.6-fold separation from
+the next candidate.  The downstream five-class task predicts a future local
+kinetic-energy-decay quantile from the first frame, and all neural comparisons
+use the same trajectory-disjoint split, architecture and optimisation budget.
 
 The main contributions of this work are threefold:
 \begin{itemize}
-    \item We implement and validate a complete SPIDER-to-NoProp interface: terms, coefficients, units, data split, residuals, and stability diagnostics are persisted in a machine-readable artifact.
-    \item We design a strictly local loss in which one independently optimised block receives the discovered weak residual per update; neither classifier nor physics gradients cross block boundaries.
-    \item We provide matched three-seed comparisons against vanilla local NoProp and an analytic pressure--Poisson prior, separating improvements in physical consistency from unsupported claims of predictive or noise-robustness gains.
+    \item We provide a numerically audited, reproducible decaying-HIT dataset
+    design with corrected de-aliasing, dense temporal windows, independent
+    trajectories and machine-checked DNS quality gates.
+    \item We recover the complete vector momentum equation---including its
+    viscosity coefficient---with a four-dimensional weak SPIDER library and
+    persist all split, support, bootstrap and coefficient provenance.
+    \item We introduce a coefficient-conditioned 3-D encoder, a frozen temporal
+    physics decoder and a strictly local full-NS loss. Matched three-seed
+    experiments show a 53--61 percentage-point accuracy gain over the
+    no-equation ablation while automated tests verify gradient locality.
 \end{itemize}
 
-The remainder of this paper is organized as follows. Section~\ref{sec:related} reviews the necessary background on NoProp and SPIDER. Section~\ref{sec:methodology} details the proposed physics-informed NoProp framework. Section~\ref{sec:experiments} presents experimental setup, results, and discussion. Section~\ref{sec:conclusion} concludes the paper and outlines future research directions.
+The remainder of this paper is organized as follows. Section~\ref{sec:related} reviews the necessary background on NoProp and SPIDER. Section~\ref{sec:methodology} details the proposed PI-NoProp framework. Section~\ref{sec:experiments} presents experimental setup, results, and discussion. Section~\ref{sec:conclusion} concludes the paper and outlines future research directions.
 
 
 \section{Related Work}
 \label{sec:related}
 
-This section reviews the literature most germane to the proposed physics-informed NoProp framework. We first discuss alternative learning paradigms that avoid global back-propagation, with a focus on the NoProp algorithm. Next, we survey data-driven methods for discovering partial differential equations (PDEs) from observations, emphasizing the SPIDER methodology. We then briefly cover physics-informed machine learning and diffusion-based generative models, which provide the theoretical underpinnings for our approach. Finally, we position our contribution in relation to these lines of work.
+This section reviews the literature most germane to the proposed PI-NoProp framework. We first discuss alternative learning paradigms that avoid global back-propagation, with a focus on the NoProp algorithm. Next, we survey data-driven methods for discovering partial differential equations (PDEs) from observations, emphasizing the SPIDER methodology. We then briefly cover physics-informed machine learning and diffusion-based generative models, which provide the theoretical underpinnings for our approach. Finally, we position our contribution in relation to these lines of work.
 
 \subsection{Local Learning and Alternatives to Back-Propagation}
 \label{sec:local-learning}
@@ -284,12 +330,22 @@ NoProp adapts these ideas to a discriminative setting by treating the label embe
 \subsection{Positioning of This Work}
 \label{sec:positioning}
 
-The preceding discussion highlights a clear gap: NoProp provides an efficient local learning mechanism but lacks physical awareness, while SPIDER excels at discovering interpretable PDEs from data but is a post-hoc tool. The emerging field of physics-informed machine learning has shown the benefits of embedding physical constraints into neural networks, yet it typically assumes the governing equations are known. \textbf{Physics-informed NoProp} bridges these worlds: it uses SPIDER to discover the underlying PDEs directly from the available data, then incorporates their weak-form residuals as local regularisers in the NoProp training objective. This synergy yields a model that is both computationally efficient (via blockwise parallelism) and physically consistent (via the discovered equations). To the best of our knowledge, this is the first attempt to combine blockwise diffusion-based learning with automated equation discovery in a unified framework.
+The preceding discussion highlights a clear gap: NoProp provides an efficient local learning mechanism but lacks physical awareness, while SPIDER excels at discovering interpretable relations from data but is a post-hoc tool. The emerging field of physics-informed machine learning has shown the benefits of embedding physical constraints into neural networks, yet it typically assumes the governing equations are known. \textbf{PI-NoProp} bridges these worlds: it uses SPIDER to identify a validated physical relation directly from the available data, then incorporates its coefficients as both a predictive condition and a weak-form local regulariser in the NoProp training objective. This synergy yields a model that is computationally efficient through blockwise locality, predictive, and physically consistent. To the best of our knowledge, this is the first attempt to combine blockwise diffusion-based learning with automated equation discovery in a unified framework.
 
 \section{Methodology}
 \label{sec:methodology}
 
-We present the proposed physics-informed NoProp framework, which integrates SPIDER-discovered partial differential equations (PDEs) into the blockwise training of NoProp. Section~\ref{sec:noprop-recall} briefly recalls the NoProp algorithm \cite{li2025noprop} and establishes notation. Section~\ref{sec:spider-summary} summarises the SPIDER methodology \cite{gurevich2024learning} for extracting interpretable PDEs from data. Section~\ref{sec:physics-noprop} describes the core contribution: how to incorporate the discovered PDEs as differentiable regularisers into each NoProp block using a weak formulation. Section~\ref{sec:implementation} discusses implementation details.
+We present the proposed PI-NoProp framework, which integrates a SPIDER-discovered physical relation into the blockwise training of NoProp. Section~\ref{sec:noprop-recall} briefly recalls the NoProp algorithm \cite{li2025noprop} and establishes notation. Section~\ref{sec:spider-summary} summarises the SPIDER methodology \cite{gurevich2024learning} for extracting interpretable relations from data. Section~\ref{sec:physics-noprop} describes the core contribution: how to incorporate the discovered relation as a differentiable regulariser into each NoProp block using a weak formulation. Section~\ref{sec:implementation} discusses implementation details.
+
+\begin{figure}[htbp]
+\centering
+\includegraphics[width=\textwidth]{figures/fig_v2_framework.png}
+\caption{Full-NS PI-NoProp pipeline. Independent decaying-HIT trajectories are
+split before weak-feature construction. SPIDER selects and validates a complete
+momentum equation, whose measured coefficients are loaded by a frozen temporal
+field decoder in each strictly local NoProp objective.}
+\label{fig:framework-overview}
+\end{figure}
 
 \subsection{NoProp: Blockwise Diffusion-Based Learning}
 \label{sec:noprop-recall}
@@ -344,48 +400,123 @@ Sparse, parsimonious relations are obtained via a greedy algorithm that iterativ
 \subsection{Physics-Informed NoProp}
 \label{sec:physics-noprop}
 
-We now describe the verified integration of a SPIDER-discovered spatial relation into NoProp. The pipeline has three explicit stages: (i) discover and validate a dimensionally admissible relation on disjoint held-out snapshots; (ii) persist its terms, coefficients, split, numerical scales, and validation diagnostics; and (iii) load that artifact as a differentiable local regulariser. Discovery failure is terminal for the discovered variant and never triggers a silent substitution of an analytic equation.
+PI-NoProp couples equation discovery to local learning through a validated,
+machine-readable interface.  The pipeline has three stages: (i) generate
+independent, densely sampled turbulence trajectories and identify a sparse
+spatiotemporal relation; (ii) validate its support and coefficients on unseen
+trajectories and persist the complete provenance; and (iii) use that relation
+both as a first-frame physical condition and on a frozen temporal decoder
+inside each isolated NoProp objective. The trainer rejects artifacts that fail
+any discovery gate.
 
 \subsubsection{Discovering Governing Equations with SPIDER}
 \label{sec:discovering-equations}
 
-The optimized discovery target is the spatial pressure relation, because it is evaluable on both archived trajectories and the single-snapshot decoder output. The scalar candidates are constrained to the same physical dimension:
+For an unforced incompressible flow, the target momentum equation is
 \begin{equation}
-\mathcal{L}_{\mathrm{PP}}=\{\nabla^2p,\;\nabla\!\cdot[(\mathbf u\!\cdot\!\nabla)\mathbf u],\;\nabla^2|\mathbf u|^2\}.
+\partial_t\mathbf u+(\mathbf u\cdot\nabla)\mathbf u+\nabla p
+-\nu\nabla^2\mathbf u=0.
+\label{eq:full-ns-target}
 \end{equation}
-Weak features are assembled over compact $16^3$ domains. Sixty DNS snapshots form the discovery matrix and the remaining 20 form a disjoint validation matrix. Candidate supports of two or three terms are fitted by the smallest right singular vector after column scaling; the sparsest support below the validation threshold is selected. One hundred bootstrap refits quantify support and coefficient stability. This procedure selects
+The vector candidate library contains the four terms in
+Eq.~\eqref{eq:full-ns-target} and the same-order distractor
+$\nabla|\mathbf u|^2$.  Let $w(\mathbf x,t)$ have compact support in a
+time--space domain. Integration by parts gives the componentwise weak columns
 \begin{equation}
-\label{eq:discovered-pp}
-\nabla^2p+0.293\,\nabla\!\cdot[(\mathbf u\!\cdot\!\nabla)\mathbf u]=0.
+\begin{aligned}
+q_i^{(t)}&=-\int u_i\,\partial_t w\,d\Omega, &
+q_i^{(c)}&=-\int u_i u_j\,\partial_jw\,d\Omega,\\
+q_i^{(p)}&=-\int p\,\partial_iw\,d\Omega, &
+q_i^{(\nu)}&=\int u_i\,\nabla^2w\,d\Omega.
+\end{aligned}
+\label{eq:full-ns-weak-columns}
 \end{equation}
-Its validation residual is 0.286 versus 0.657 for the next-best two-term support; all 100 bootstrap selections retain the same support and the maximum coefficient variation is 0.26\%. The effective coefficient differs from the continuum value one and is reported rather than corrected: it reflects the numerical scaling of the archived solver's $3/2$ padding. Continuity remains a prescribed property of the incompressible DNS and is identified as such.
+Thus neither temporal nor spatial derivatives are taken directly from the
+observed fields.  Sparse support selection uses nine discovery trajectories;
+three additional trajectories determine admissibility and three are untouched
+until the final test. One hundred bootstrap refits resample complete
+trajectories rather than individual weak rows.
+
+SPIDER selects
+\begin{equation}
+\partial_t\mathbf u
++1.003459(\mathbf u\cdot\nabla)\mathbf u
++1.003470\nabla p
+-0.00501841\nabla^2\mathbf u=0.
+\label{eq:discovered-full-ns}
+\end{equation}
+The DNS viscosity is $0.005$ and is consulted only after discovery.  The
+maximum coefficient error is $0.368\%$; validation and test residuals are
+$9.51\times10^{-4}$ and $9.70\times10^{-4}$, respectively.  The next-best
+support has residual $3.86\times10^{-2}$, a 40.6-fold separation, and all 100
+trajectory-bootstrap refits select the same four terms.
+
+\subsubsection{Equation-Conditioned First-Frame Representation}
+\label{sec:equation-condition}
+
+The short-horizon decay label is controlled by the instantaneous kinetic-energy
+balance, so retaining only a heavily averaged image representation discards an
+important part of the discoverable signal.  For the first observed frame, let
+$K=\frac12\langle|\mathbf u|^2\rangle$ and define
+\begin{equation}
+e_m(x)=\frac{\langle\mathbf u\cdot\mathbf q_m(x)\rangle}{K},\qquad
+s_{\mathbf c}(x)=c_2e_c(x)+c_3e_p(x)+c_4e_\nu(x),
+\label{eq:energy-rate-condition}
+\end{equation}
+where $\mathbf q_c=(\mathbf u\cdot\nabla)\mathbf u$,
+$\mathbf q_p=\nabla p$, $\mathbf q_\nu=\nabla^2\mathbf u$, and
+$(c_2,c_3,c_4)$ come directly from the accepted equation. By
+Eq.~\eqref{eq:full-ns-target}, $s_{\mathbf c}$ is the instantaneous relative
+kinetic-energy decay rate. All derivatives in this conditioning diagnostic are
+computed from the first frame only; neither the future frames nor the class
+label enter Eq.~\eqref{eq:energy-rate-condition}.
+
+A three-layer strided 3-D convolutional encoder preserves local spatial
+structure before pooling. Its feature is fused with a small embedding of the
+discovery-set-standardised scalar $s_{\mathbf c}$. The no-equation ablation
+disables this branch, the analytic ablation uses $(1,1,-0.005)$, and discovered
+PI-NoProp uses $(1.003459,1.003470,-0.00501841)$. Thus the identified law
+affects prediction directly as well as regularising the decoded field.
 
 \subsubsection{Reconstructing Physical Fields from Latent Variables}
 \label{sec:reconstructing-fields}
 
-The shared decoder $\mathcal{D}_{\phi}:\mathbb{R}^{128}\rightarrow\mathbb{R}^{4\times16\times16\times16}$ outputs three velocity channels and pressure. It is pretrained from encoder features and then frozen. Decoder outputs are initially in cache-standardized coordinates; the stored per-channel mean and standard deviation convert them back to physical units before residual evaluation. Consequently, the coefficients in Eq.~\eqref{eq:discovered-pp} are applied in the units in which they were discovered.
+Full momentum residuals require temporal fields.  We therefore use
+\begin{equation}
+\mathcal D_\phi:\mathbb R^{128}\rightarrow
+\mathbb R^{9\times4\times16\times16\times16},
+\end{equation}
+which jointly reconstructs nine velocity--pressure frames.  It is pretrained
+from encoder features and then frozen. Stored discovery-set means and standard
+deviations return its output to physical units before weak integration.  This
+keeps the coefficients in Eq.~\eqref{eq:discovered-full-ns} in the exact units
+in which SPIDER measured them.
 
 \subsubsection{Weak-Form Physics Loss for Each Block}
 \label{sec:weak-physics-loss}
 
-For compact test functions $w_k$, the two local residuals are
+For block $t$, test function $k$, and velocity component $i$, define
 \begin{equation}
-\label{eq:weak-residuals}
-r_{t,k}^{\mathrm{div}}=-\int \tilde{\mathbf u}_t\cdot\nabla w_k\,d\Omega,
-\quad
-r_{t,k}^{\mathrm{SP}}=\int \tilde p_t\nabla^2w_k\,d\Omega
--0.293\int ((\tilde{\mathbf u}_t\cdot\nabla)\tilde{\mathbf u}_t)\cdot\nabla w_k\,d\Omega.
+ r_{t,k,i}^{\mathrm{NS}}=\sum_{m=1}^{4}c_m q_{t,k,i}^{(m)},
+ \qquad
+ \eta_{t,k,i}^{\mathrm{NS}}=
+ \frac{r_{t,k,i}^{\mathrm{NS}}}
+ {\sum_m|c_mq_{t,k,i}^{(m)}|+\epsilon},
+\label{eq:weak-ns-residual}
 \end{equation}
-
-Integration by parts moves the pressure Laplacian entirely onto $w_k$ and moves the outer divergence of the nonlinear term onto $\nabla w_k$. The remaining velocity gradient is evaluated by a grouped three-dimensional convolution, so all samples and velocity components are processed in one differentiable operation.
-
-Each residual is divided by the sum of the absolute magnitudes of its constituent weak terms, preventing a change of units or decoder amplitude from dominating the objective. The local physical loss is
+where $c_m$ are loaded from the accepted artifact.  Incompressibility is
+evaluated separately as
+$r^{\mathrm{div}}=-\int\tilde{\mathbf u}\cdot\nabla w\,d\Omega$.
+The local physical loss is
 \begin{equation}
 \label{eq:physics-loss}
-\mathcal{L}_{\text{phys}}^{(t)} = \frac{1}{|\mathcal{K}|}\sum_{k\in\mathcal{K}} \left( |\eta_{t,k}^{\mathrm{div}}|^2 + \tfrac12|\eta_{t,k}^{\mathrm{SP}}|^2 \right).
+\mathcal{L}_{\mathrm{phys}}^{(t)}=
+\operatorname{mean}_{k,i}|\eta_{t,k,i}^{\mathrm{NS}}|^2
++0.25\operatorname{mean}_{k,\tau}|\eta_{t,k,\tau}^{\mathrm{div}}|^2.
 \end{equation}
-
-The analytic ablation replaces 0.293 by the continuum coefficient one; vanilla NoProp sets both spatial constraints to zero.
+The analytic ablation uses $(1,1,1,-0.005)$, while the no-physics baseline
+sets $\lambda=0$. Every checkpoint is evaluated with the discovered
+coefficients as a common ruler.
 
 \subsubsection{Overall Training Objective and Algorithm}
 \label{sec:overall-objective}
@@ -395,21 +526,47 @@ The conceptual sum of local block objectives is
 \label{eq:total-loss}
 \mathcal{L}_{\mathrm{local}} = \sum_{t=1}^T \left( \mathcal{L}_{\text{diff}}^{(t)} + \lambda \mathcal{L}_{\text{phys}}^{(t)} \right).
 \end{equation}
+We implement the cosine schedule in the generative direction. Let
+$0=\gamma_0<\cdots<\gamma_T=1$ denote increasing signal fractions. Block $t$
+is trained on
+$z_t=\sqrt{\gamma_t}u_y+\sqrt{1-\gamma_t}\epsilon$ and predicts $u_y$ with a
+uniformly weighted local squared error. At inference, deterministic coefficients
+are chosen so that
+\begin{equation}
+b_t=\sqrt{\frac{1-\gamma_{t+1}}{1-\gamma_t}},\qquad
+a_t=\sqrt{\gamma_{t+1}}-b_t\sqrt{\gamma_t},\qquad c_t=0.
+\label{eq:consistent-schedule}
+\end{equation}
+With a perfect local prediction, the update in Eq.~\eqref{eq:inference-step}
+has exactly the training marginal at $\gamma_{t+1}$. Hence block zero sees pure
+noise in both training and inference, and the last block reaches a clean target
+embedding. An automated marginal-consistency test checks this identity.
+
 At each mini-batch we sample $J\sim\mathrm{Uniform}\{1,\ldots,T\}$ and optimise $T(\mathcal{L}_{\mathrm{diff}}^{(J)}+\lambda\mathcal{L}_{\mathrm{phys}}^{(J)})$. This is an unbiased estimator of Eq.~\eqref{eq:total-loss}. Block $J$ has its own optimiser; all other blocks receive no gradient. The encoder, label embedding, and decoder are pretrained once and frozen. After local training, the classifier is trained on $z_T$ detached from every block, so its loss cannot propagate into the local learners.
+
+\begin{figure}[htbp]
+\centering
+\includegraphics[width=\textwidth]{figures/fig_v2_local_training.png}
+\caption{Strictly local full-NS update. A sampled block receives the frozen
+3-D and equation-rate condition together with target features; its nine-frame decoded field enters the local
+diffusion-plus-physics objective. Independent optimizers and detached
+classifier features isolate gradients between blocks and training phases.}
+\label{fig:local-training}
+\end{figure}
 
 The training procedure is summarised in Algorithm~\ref{alg:training}.
 
 \begin{algorithm}[htbp]
-\caption{Strictly local discovery-informed NoProp}
+\caption{Strictly local PI-NoProp}
 \label{alg:training}
 \begin{algorithmic}[1]
 \REQUIRE Training data, $T$ blocks, validated SPIDER artifact, frozen encoder $E$, embedding $W$, decoder $\mathcal D_\phi$.
 \FOR{each local update}
     \STATE Sample mini-batch $\mathcal B$ and block $J\sim\mathrm{Uniform}\{1,\ldots,T\}$.
-    \STATE Compute detached condition $E(x)$ and target embedding $W(y)$.
-    \STATE Sample $z_{J-1}$ directly from the forward diffusion marginal.
-    \STATE Predict locally with block $\theta_J$ and decode $z_J$ using frozen $\mathcal D_\phi$.
-    \STATE Load discovered terms and coefficients; compute Eq.~\eqref{eq:physics-loss}.
+    \STATE Compute detached condition $E(x,s_{\mathbf c}(x))$ and target embedding $W(y)$.
+    \STATE Sample $z_{J-1}$ from the matching noise-to-signal marginal.
+    \STATE Predict locally with block $\theta_J$ and decode a temporal field using frozen $\mathcal D_\phi$.
+    \STATE Load discovered full-NS terms and coefficients; compute Eq.~\eqref{eq:physics-loss}.
     \STATE Update only $\theta_J$ with $T(\mathcal L_{\mathrm{diff}}^{(J)}+\lambda\mathcal L_{\mathrm{phys}}^{(J)})$.
 \ENDFOR
 \STATE Freeze all blocks; train $\theta_{\mathrm{out}}$ on detached $z_T$.
@@ -419,344 +576,536 @@ The training procedure is summarised in Algorithm~\ref{alg:training}.
 \subsection{Implementation Details}
 \label{sec:implementation}
 
-\textbf{Choice of test functions.} Following \cite{gurevich2019robust,gurevich2024learning}, we use tensor-product polynomial test functions:
+\textbf{Choice of test functions.} Following \cite{gurevich2019robust,gurevich2024learning}, we use time--space tensor-product test functions:
 \begin{equation}
 \label{eq:test-function}
-w(\mathbf{x}) = \prod_{\xi\in\{x,y,z\}} \bigl(1-\tilde{\xi}^2\bigr)^{\beta},
+w(\mathbf{x},t) = \bigl(1-\tilde t^2\bigr)^{\beta}
+\prod_{\xi\in\{x,y,z\}} \bigl(1-\tilde{\xi}^2\bigr)^{\beta},
 \end{equation}
-where $\tilde{\xi}$ is mapped to $[-1,1]$. Discovery uses $\beta=6$ and deterministic cosine modulations; training uses eight functions with the same compact-support construction and $\beta=8$.
+where every local coordinate is mapped to $[-1,1]$. Discovery and training use
+$\beta=4$ with deterministic cosine modulations. All first and second
+derivatives of $w$ are evaluated analytically.
 
-\textbf{Integration domains.} Discovery samples four $16^3$ domains per snapshot. Training evaluates the fixed eight-function bank on the compact $16^3$ decoder output. No artificial temporal replication is used.
+\textbf{Integration domains.} Discovery samples two nine-frame windows and
+four $16^3$ spatial domains per trajectory. Eight functions and all three
+momentum components yield 192 weak rows per trajectory. Training applies the
+same eight-function bank to the decoder's nine-frame $16^3$ output.
 
-\textbf{Derivative computation.} For terms that cannot be fully integrated by parts (e.g., the nonlinear term $(\tilde{\mathbf{u}}_t\cdot\nabla)\tilde{\mathbf{u}}_t$ after transferring one derivative), we approximate remaining derivatives using central finite differences on the reconstructed fields. These differences are implemented as convolutions with fixed kernels, ensuring differentiability and allowing gradients to flow back to the decoder.
+\textbf{Derivative computation.} Equation~\eqref{eq:full-ns-weak-columns}
+moves every derivative onto $w$.  The discovery matrix and neural loss therefore
+use only field products and contractions with fixed analytic weights. This
+avoids finite-difference derivatives of both DNS observations and decoder
+outputs while remaining fully differentiable with respect to the local latent.
 
-\textbf{Decoder architecture.} A compact transposed-convolutional decoder maps $z_t\in\mathbb{R}^{128}$ to four $16^3$ channels. It is pretrained from real encoder features, frozen during all local updates, and converted back to physical units before residual evaluation.
+\textbf{Decoder architecture.} A compact transposed-convolutional decoder maps
+$z_t\in\mathbb{R}^{128}$ jointly to $9\times4\times16^3$ values. It is
+pretrained against trajectory windows, frozen during local updates, and
+converted back to physical units before residual evaluation.
 
-\textbf{Balancing losses.} The formal comparison uses $\lambda=10^{-2}$ and the new matched sweep evaluates $\{10^{-3},3\!\times\!10^{-3},10^{-2},3\!\times\!10^{-2},10^{-1}\}$ over three seeds. Residual normalization makes this scale independent of raw field units.
+\textbf{Condition encoder.} Three $3\times3\times3$ convolutions with channel
+widths 16, 32 and 64 precede $2^3$ adaptive pooling and a 128-dimensional
+projection. A two-layer 32-unit MLP embeds the standardised scalar in
+Eq.~\eqref{eq:energy-rate-condition}; a linear fusion returns the
+128-dimensional frozen condition. This replaces direct coarse average pooling,
+which cannot preserve the derivative-sensitive energy balance.
+
+\textbf{Training.} We use $T=10$ independently optimised blocks, AdamW with
+learning rate $10^{-3}$, batch size 32, mixed precision and TF32. Each block
+receives 100 local updates with $\lambda=10^{-2}$; the classifier is then
+trained for 30 epochs on detached final latents. Matched comparisons use seeds
+$\{42,123,456\}$ and the same architecture, data splits and optimisation
+protocol. Each equation condition has its own pretrained frozen components.
 
 \textbf{Extension to continuous time.} NoProp also admits a continuous-time variant (NoProp-CT) \cite{li2025noprop} where the number of blocks tends to infinity and the evolution of $z_t$ is described by a stochastic differential equation. In that setting, the physics-informed loss can be defined analogously by sampling times $t\sim\mathcal{U}(0,1)$ and evaluating the weak residuals at those times. The diffusion loss becomes an integral over time involving $\mathrm{SNR}'(t)$. For brevity, we focus on the discrete-time formulation; the continuous-time extension is straightforward.
-
 \section{Experiments}
 \label{sec:experiments}
 
-We evaluate the proposed discovery-informed NoProp framework on an in-house turbulent-flow dataset. Section~\ref{sec:dataset} describes the dataset and its sampling limitations. Section~\ref{sec:setup} gives the matched protocol, Section~\ref{sec:main-results} reports classification and physical-consistency results, Section~\ref{sec:ablations} gives the new loss-weight ablation, and Section~\ref{sec:efficiency} reports measured computational cost. Superseded noise and representation figures are explicitly separated as legacy project history.
-
-\subsection{Dataset: Homogeneous Isotropic Turbulence DNS}
+\subsection{Trajectory-Disjoint Decaying-HIT Dataset}
 \label{sec:dataset}
 
-We generate data using an in-house Fourier pseudo-spectral direct numerical simulation (DNS) of forced homogeneous isotropic turbulence (HIT) in a triply periodic cube. The governing equations are the three-dimensional incompressible Navier--Stokes equations:
-\begin{equation}
-\partial_t\mathbf{u} + (\mathbf{u}\cdot\nabla)\mathbf{u} = -\nabla p + \nu\nabla^2\mathbf{u} + \mathbf{f},\qquad \nabla\cdot\mathbf{u}=0,
-\end{equation}
-with kinematic viscosity $\nu=5\times10^{-3}$ and stochastic divergence-free forcing $\mathbf{f}$ resampled at every solver step and restricted to the lowest wavenumber shells. The simulation employs a $64^3$ grid with $3/2$-rule dealiasing and a second-order Adams--Bashforth time stepper with solver step $\Delta t=10^{-3}$. Snapshots are saved every 50 solver steps, giving a snapshot interval of $0.05$. The generated run contains 80 snapshots and reaches a final measured Taylor-microscale Reynolds number $Re_\lambda=30.5$ with $u_{\mathrm{rms}}=0.1084$. These values are taken from the archived generation log; the finite trajectory is not asserted to be a statistically converged HIT ensemble.
+We solve the unforced incompressible Navier--Stokes equations on
+$[0,2\pi]^3$ with a $64^3$ Fourier--Galerkin grid, viscosity
+$\nu=5\times10^{-3}$, time step $2\times10^{-3}$, classical RK4 integration,
+and correctly normalised $3/2$ de-aliasing. Fifteen independently seeded
+divergence-free initial fields are scaled to kinetic energy $K=0.5$. After 32
+settling steps, 17 consecutive velocity--pressure frames are saved from each
+trajectory. No stochastic or unobserved forcing enters the equation.
 
-\textbf{Data sampling and pre-processing.} We extract 512 three-dimensional spatial subdomains of size $32^3$ grid points from the archived trajectory. The generator stratifies candidates using the mean squared velocity-gradient proxy $G=\sum_{i,j}\langle(\partial_j u_i)^2\rangle$ evaluated at the first frame; each resulting regime contains 256 samples:
-\begin{itemize}
-    \item \textbf{Centre group:} candidates below the median of the velocity-gradient proxy $G$.
-    \item \textbf{Edge group:} candidates above the median of $G$.
-\end{itemize}
-Each stored subdomain contains 32 frames of velocity $\mathbf{u}(\mathbf{x})=(u_x,u_y,u_z)$ and pressure $p(\mathbf{x})$ on a $32\times32\times32$ grid. Classification uses frame zero, while the complete archived snapshots are used by the corrected equation-discovery analysis. A contiguous first-frame cache avoids repeatedly decompressing unused frames. The fixed random split contains 192 training, 32 validation, and 32 test sample indices per group; channel statistics are computed from the training split only. These index sets are disjoint, but the underlying crops are not grouped by DNS time or spatial location. In fact, 31/32 centre and 32/32 edge test inputs overlap spatially with a training crop from the same saved snapshot. Test accuracy is therefore an internal sample-disjoint benchmark, not evidence of generalisation to an independent trajectory or disjoint spatio-temporal region.
-
-\textbf{Classification labels.} The archived generator assigns labels separately within each group by quantising the streamwise velocity averaged over all $32^3$ points and all 32 stored frames, $U=\langle u_x\rangle_{\mathbf{x},t}$, into ten empirical quantile bins. The classifier nevertheless receives frame zero only. The quantile boundaries were computed before the train/validation/test split, so the task definition uses the marginal target distribution of all 256 samples in a group. These choices make the experiment an internal representation benchmark rather than a prospective prediction protocol. The centre and edge ranges of $U$ are approximately 0.0167 and 0.0145, respectively, and all bins contain 25 or 26 samples.
-
-\begin{figure}[htbp]
-\centering
-\includegraphics[width=0.9\textwidth]{figures/fig_data_samples.png}
-\caption{Representative velocity-magnitude snapshots from the low-gradient ``centre'' group (left) and high-gradient ``edge'' group (right). The names are retained from the archived dataset and do not denote geometric centre/wall positions.}
-\label{fig:data-samples}
-\end{figure}
-
-\textbf{Legacy synthetic noise protocol.} The superseded exploratory implementation corrupted fields with additive uniform noise:
-\begin{equation}
-\label{eq:noise-corruption}
-f_\sigma(\mathbf{x}) = f(\mathbf{x}) + \sigma \, \xi_f(\mathbf{x}) \, s_f,
-\end{equation}
-where $f\in\{u_x,u_y,u_z,p\}$, $\sigma$ is the noise level, $\xi_f$ is i.i.d.\ uniform noise in $[-1,1]$, and $s_f$ is the empirical field standard deviation. The historical values were $\sigma\in\{0,0.1,0.5,1.0\}$; this protocol has not been rerun for the discovery-informed model.
-
-\subsection{Experimental Setup}
-\label{sec:setup}
-
-\subsubsection{Baseline Methods}
-\label{sec:baselines}
-
-The formal matched comparison contains three variants:
-
-\begin{itemize}
-    \item \textbf{Local NoProp (none):} strictly local discrete NoProp with no physical loss.
-    \item \textbf{Local NoProp (analytic):} the same model with prescribed continuity and the continuum pressure--Poisson coefficient $(1,1)$.
-    \item \textbf{Discovery-informed NoProp (SPIDER):} the same model loading the held-out-validated terms and coefficients $(1,0.293)$ from the SPIDER artifact.
-\end{itemize}
-
-Legacy CNN, PINN, NoProp-CT, and post-hoc SPIDER-classifier results used a different split and are not included in the formal table.
-
-\subsubsection{SPIDER-Discovered Equations}
-\label{sec:discovered-equations}
-
-The original broad-library implementation produced unstable zero-order and duplicate time-derivative relations and is retained only as legacy history. The corrected spatial SPIDER applies dimensional constraints before regression, uses all 80 archived snapshots in a 60/20 discovery/validation split, and recovers Eq.~\eqref{eq:discovered-pp}. Provenance is therefore:
-
-\begin{itemize}
-    \item \textbf{Continuity equation (prescribed by the incompressible DNS):}
-    \begin{equation}
-    \label{eq:continuity-discovered}
-    \mathcal{R}_{\text{cont}}(\mathbf{u}) := \nabla\cdot\mathbf{u} = 0.
-    \end{equation}
-    
-    \item \textbf{SPIDER-discovered spatial relation:}
-    \begin{equation}
-    \label{eq:pp-discovered}
-    \mathcal{R}_{\text{SP}}(p,\mathbf{u}) := \nabla^2 p + 0.293\,\nabla\cdot[(\mathbf{u}\cdot\nabla)\mathbf{u}] = 0,
-    \end{equation}
-    selected from data and accepted only after held-out and bootstrap validation.
-\end{itemize}
-
-The analytic baseline uses the same structure with convection coefficient one. The difference between 0.293 and one is not hidden: it exposes the effective amplitude convention introduced by the archived generator's unscaled $3/2$ Fourier padding. Full forced Navier--Stokes recovery is not claimed because instantaneous forcing was not saved.
-
-For reference, the DNS uses the known Navier--Stokes form with $\nu=5\times10^{-3}$:
-\begin{equation}
-\label{eq:ns-discovered}
-\mathcal{R}_{\text{NS}}(\mathbf{u},p) := \partial_t\mathbf{u} + (\mathbf{u}\cdot\nabla)\mathbf{u} + \nabla p - \nu\nabla^2\mathbf{u} = 0,
-\end{equation}
-but the optimized single-snapshot training objective does not insert a duplicated artificial time axis and does not evaluate this full temporal residual.
+The dataset is split by trajectory before any weak domains or learning crops
+are drawn: trajectories 0--8 are used for discovery/training, 9--11 for
+validation, and 12--14 for final testing. Across all trajectories the maximum
+CFL number is 0.062, divergence RMS is below $1.49\times10^{-16}$, kinetic
+energy decreases monotonically, and the 16-frame energy drop lies between
+0.892\% and 0.922\%.
 
 \begin{figure}[htbp]
 \centering
-\includegraphics[width=\textwidth]{figures/fig_spider_discovery.png}
-\caption{Validated spatial SPIDER result. Left: discovered coefficients after fixing the pressure-Laplacian coefficient to one. Right: held-out residual of the selected support and the next-best support; the selected support appears in all 100 bootstrap refits.}
-\label{fig:spider}
+\includegraphics[width=\textwidth]{figures/fig_v2_dns_quality.png}
+\caption{DNS quality audit over all 15 independent trajectories. Every
+trajectory exhibits monotone kinetic-energy decay, machine-precision
+incompressibility, and a CFL number far below the prespecified 0.5 limit.}
+\label{fig:dns-quality}
 \end{figure}
 
-The resulting JSON artifact is read by the optimized trainer. Unit tests verify coefficient transfer, while any artifact with failed validation or unsupported terms raises an error.
-
-\subsubsection{Implementation Details for PI-NoProp}
-\label{sec:implementation-details}
-
-\textbf{Network architecture.} The condition encoder adaptively pools the four input channels (three velocities and pressure) to $4^3$, followed by two fully connected layers producing a normalised 128-dimensional feature. Each of $T=10$ NoProp blocks is a three-hidden-layer MLP receiving the concatenated noisy latent and frozen condition feature. A compact transposed-convolution decoder maps a latent to the central $4\times16^3$ physical integration domain. Encoder-feature class centroids define the frozen target embeddings, aligning the diffusion target space with the decoder's autoencoding space.
-
-\textbf{Training details.} The optimized path uses AdamW, learning rate $10^{-3}$, weight decay $10^{-4}$, batch size 64, automatic mixed precision, and TF32 on an 8\,GB RTX~4060 Laptop GPU. The encoder and compact decoder are pretrained once and frozen. At every local step, one block index $t$ is sampled and only that block's optimizer is updated; the objective is multiplied by $T$, providing an unbiased estimator of the sum over blocks. Each block receives 100 updates in the reported efficiency experiments. The classifier is trained afterward on detached final latents for 30 epochs. Eight deterministic compact-support test functions with $\beta=8$ are evaluated over $16^3$. Weak residual accumulation and normalisation are performed in FP32.
-
-\textbf{Comparison protocol.} The formal comparison uses identical frozen shared components and fixed 192/32/32 train/validation/test splits for no physics, analytic physics, and SPIDER-discovered physics. Results are aggregated over seeds $\{0,1,2\}$. Every checkpoint is evaluated with both coefficient sets; Table~\ref{tab:main-results} uses the SPIDER residual as a common ruler for all methods.
-
-\begin{figure}[htbp]
-\centering
-\includegraphics[width=0.48\textwidth]{figures/fig_field_reconstruction_centre.png}
-\hfill
-\includegraphics[width=0.48\textwidth]{figures/fig_field_reconstruction_edge.png}
-\caption{Legacy decoder reconstruction examples for the centre (left) and edge (right) groups. Each panel shows original and reconstructed $u_x$ slices. These examples are qualitative and are not used to establish decoder fidelity for the optimized checkpoints.}
-\label{fig:field-reconstruction}
-\end{figure}
-
-\textbf{Evaluation metrics.} We report:
-
-\begin{itemize}
-    \item \textbf{Classification accuracy} (top-1) on the test set.
-    \item \textbf{Consistency residuals:} dimensionless continuity and discovered-relation weak residuals. For weak contributions $q_j$,
-    \begin{equation}
-    \label{eq:relative-residual}
-    \eta = \operatorname{RMS}_{k}\left(\frac{\sum_j q_{j,k}}{\sum_j|q_{j,k}|+\epsilon}\right).
-    \end{equation}
-    Lower $\eta_{\mathrm{div}}$ and $\eta_{\mathrm{SP}}$ indicate better adherence to the prescribed continuity and discovered relation, respectively.
-    \item \textbf{Computational efficiency:} complete local block-phase time and peak GPU memory.
-\end{itemize}
-
-\subsection{Main Results: Classification Accuracy and Physical Consistency}
-\label{sec:main-results}
-
-Table~\ref{tab:main-results} presents held-out test accuracy and dimensionless spatial weak residuals under the optimized local protocol. Values are aggregated over seeds $\{0,1,2\}$; each test split contains 32 samples, so one prediction changes accuracy by 3.125 percentage points.
+For the learning task, 64 nine-frame $16^3$ crops are sampled from each
+trajectory, yielding 960 samples. The discovery-set median local enstrophy
+defines low- and high-enstrophy groups; validation and test data do not
+influence this threshold. Within each group, labels are five discovery-set
+quantiles of future relative local kinetic-energy decay. The condition encoder
+receives only the first velocity--pressure frame, making the benchmark
+predictive rather than a relabelling of its complete input. This gives
+576/192/192 samples in the trajectory-disjoint train/validation/test splits.
 
 \begin{table}[htbp]
 \centering
-\caption{Discovery-to-training results (mean $\pm$ standard deviation over three seeds). Every method is evaluated with the same SPIDER coefficient for $\eta_{\mathrm{SP}}$.}
+\caption{Audited DNS and downstream-data configuration. Counts refer to
+independent trajectories before crop construction.}
+\label{tab:dns-data-configuration}
+\small
+\begin{tabular}{@{}lp{0.46\textwidth}@{}}
+\toprule
+Quantity & Value \\
+\midrule
+DNS grid and domain & $64^3$ on $[0,2\pi)^3$ \\
+Viscosity and RK4 step & $\nu=0.005$, $\Delta t=0.002$ \\
+Independent trajectories & 15 \\
+Discovery/validation/test trajectories & 9/3/3 \\
+Stored frames per trajectory & 17 consecutive frames \\
+Learning crop & $9\times4\times16^3$ \\
+Crops per trajectory / total & 64 / 960 \\
+Train/validation/test learning samples & 576/192/192 \\
+Target & Five quantiles of future relative local energy decay \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+As a target-identifiability audit, a one-dimensional linear calibration of the
+discovered first-frame rate $s_{\mathbf c}$, fitted only on discovery
+trajectories, obtains 90.7\% and 84.5\% test accuracy in the low- and
+high-enstrophy groups. Its test correlation with the continuous target is
+0.996 in both groups. Thus failure at chance level cannot be attributed to an
+intrinsically unobservable label.
+
+\begin{table}[htbp]
+\centering
+\caption{Target-identifiability audit using no future information during
+prediction. Accuracy is percentage top-1; the two-frame result is reported
+only as a temporal sanity check.}
+\label{tab:predictability-audit}
+\small
+\setlength{\tabcolsep}{5pt}
+\begin{tabular}{lccccc}
+\toprule
+& \multicolumn{3}{c}{Discovered-NS first-frame rate} & Two-frame & Test \\
+Region & Train & Validation & Test & test & correlation \\
+\midrule
+Low enstrophy  & 90.63 & 95.45 & 90.74 & 96.30 & 0.9959 \\
+High enstrophy & 90.63 & 92.31 & 84.52 & 95.24 & 0.9961 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\begin{figure}[htbp]
+\centering
+\includegraphics[width=0.90\textwidth]{figures/fig_v2_data_samples.png}
+\caption{Orthogonal streamwise-velocity slices from representative low- and
+high-enstrophy learning crops. Both rows use one common physical colour scale;
+the group names denote local vorticity strata, not geometric position.}
+\label{fig:v2-data}
+\end{figure}
+
+\subsection{Discovery and Comparison Protocol}
+\label{sec:experimental-setup}
+
+SPIDER uses the candidates
+\[
+\{\partial_t\mathbf u,\;(\mathbf u\cdot\nabla)\mathbf u,\;\nabla p,\;
+\nabla^2\mathbf u,\;\nabla|\mathbf u|^2\}.
+\]
+Each discovery trajectory contributes 192 weak rows. Support selection is
+performed only on the nine discovery trajectories; the validation trajectories
+are used once for acceptance and the test trajectories once for final
+reporting. The accepted artifact records every filename, split, test-function
+scale, candidate support, coefficient, residual and bootstrap diagnostic.
+
+\begin{figure}[htbp]
+\centering
+\includegraphics[width=\textwidth]{figures/fig_v2_spider.png}
+\caption{Full momentum-equation discovery. Left: SPIDER coefficients relative
+to DNS truth, with measured values annotated. Right: independent weak
+residuals; the next-best support is separated from the accepted support by a
+factor of 40.6.}
+\label{fig:v2-spider}
+\end{figure}
+
+We compare three architecture- and protocol-matched local learners:
+\begin{itemize}
+  \item \textbf{No physics}: strictly local NoProp with $\lambda=0$ and the
+  equation-condition branch disabled.
+  \item \textbf{Analytic NS}: coefficients $(1,1,1,-0.005)$ in both the
+  first-frame condition and temporal loss.
+  \item \textbf{PI-NoProp (discovered NS)}: the coefficients in
+  Eq.~\eqref{eq:discovered-full-ns}, loaded into both paths from the validated
+  artifact.
+\end{itemize}
+For each region and seed, the methods use the same architecture, split and
+training budget; frozen components are pretrained separately because their
+physical conditions differ. We use seeds $\{42,123,456\}$,
+100 updates per block and $\lambda=10^{-2}$. Every final checkpoint is evaluated
+with the discovered equation, giving a common $\eta_{\mathrm{NS}}$.
+
+\subsection{Full-NS Discovery Result}
+\label{sec:discovery-result}
+
+The selected equation is Eq.~\eqref{eq:discovered-full-ns}. Its discovery,
+validation and test residuals are respectively
+$8.72\times10^{-4}$, $9.51\times10^{-4}$ and
+$9.70\times10^{-4}$. The distractor is rejected, trajectory-bootstrap support
+is 100\%, and the maximum coefficient error is 0.368\%. In particular, the
+viscosity inferred from fields alone is $0.00501841$, compared with the solver
+value $0.005$. These results resolve the principal limitation of the
+single-snapshot spatial formulation: the accepted artifact now contains the
+complete time-dependent vector momentum equation.
+
+\begin{table}[htbp]
+\centering
+\caption{Coefficient and held-out audit of the accepted SPIDER momentum
+equation. The time coefficient fixes the normalization and is not an
+independently estimated error.}
+\label{tab:spider-coefficient-audit}
+\resizebox{\textwidth}{!}{%
+\begin{tabular}{lccc}
+\toprule
+Term & DNS coefficient & Discovered coefficient & Relative error (\%) \\
+\midrule
+$\partial_t\mathbf u$ & 1 & 1 & -- \\
+$(\mathbf u\cdot\nabla)\mathbf u$ & 1 & 1.003459 & 0.346 \\
+$\nabla p$ & 1 & 1.003470 & 0.347 \\
+$\nabla^2\mathbf u$ & $-0.005$ & $-0.00501841$ & 0.368 \\
+\midrule
+Discovery/validation/test $\eta$ & \multicolumn{3}{c}{$8.72\times10^{-4}$ / $9.51\times10^{-4}$ / $9.70\times10^{-4}$} \\
+Next-support validation $\eta$ & \multicolumn{3}{c}{$3.86\times10^{-2}$ (40.6-fold separation)} \\
+Trajectory-bootstrap support & \multicolumn{3}{c}{100/100 refits} \\
+\bottomrule
+\end{tabular}}
+\end{table}
+
+\subsection{Main Learning Results}
+\label{sec:main-results}
+
+\begin{table}[htbp]
+\centering
+\caption{Trajectory-disjoint three-seed results (mean $\pm$ sample standard
+deviation). All physics residuals use the discovered coefficients; lower is
+better. Accuracy is percentage top-1 accuracy on the future-decay task.}
 \label{tab:main-results}
 \resizebox{\textwidth}{!}{%
 \begin{tabular}{lcccccc}
 \toprule
-Method & \multicolumn{3}{c}{Centre} & \multicolumn{3}{c}{Edge} \\
-\cmidrule(lr){2-4} \cmidrule(lr){5-7}
-& Accuracy $\uparrow$ & $\eta_{\mathrm{div}}\downarrow$ & $\eta_{\mathrm{SP}}\downarrow$
-& Accuracy $\uparrow$ & $\eta_{\mathrm{div}}\downarrow$ & $\eta_{\mathrm{SP}}\downarrow$ \\
+Method & \multicolumn{3}{c}{Low enstrophy} & \multicolumn{3}{c}{High enstrophy}\\
+\cmidrule(lr){2-4}\cmidrule(lr){5-7}
+& Accuracy $\uparrow$ & $\eta_{\mathrm{div}}\downarrow$ & $\eta_{\mathrm{NS}}\downarrow$
+& Accuracy $\uparrow$ & $\eta_{\mathrm{div}}\downarrow$ & $\eta_{\mathrm{NS}}\downarrow$\\
 \midrule
-Local NoProp (none) & $33.33\pm6.51$ & 0.420 & 0.293 & $27.08\pm3.61$ & 0.413 & 0.244 \\
-Local NoProp (analytic) & $33.33\pm6.51$ & 0.171 & 0.213 & $25.00\pm0.00$ & \textbf{0.107} & 0.179 \\
-Discovery-informed NoProp (SPIDER) & $33.33\pm3.61$ & \textbf{0.124} & \textbf{0.158} & $27.08\pm4.77$ & 0.110 & \textbf{0.145} \\
+No physics & $20.37\pm6.07$ & $0.344\pm0.228$ & $0.753\pm0.063$
+           & $19.44\pm5.99$ & $0.366\pm0.236$ & $0.634\pm0.240$\\
+Analytic NS & $81.17\pm3.51$ & $\mathbf{0.203\pm0.030}$ & $\mathbf{0.432\pm0.201}$
+            & $\mathbf{73.81\pm7.81}$ & $0.211\pm0.054$ & $0.371\pm0.130$\\
+PI-NoProp (discovered NS) & $\mathbf{81.79\pm2.98}$ & $0.220\pm0.035$ & $0.447\pm0.257$
+                          & $73.41\pm8.45$ & $\mathbf{0.120\pm0.034}$ & $\mathbf{0.352\pm0.074}$\\
 \bottomrule
-\end{tabular}
-}
+\end{tabular}}
 \end{table}
 
-The optimized results support three conclusions:
+The discovered equation raises mean test accuracy from 20.37\% to 81.79\% in
+the low-enstrophy group and from 19.44\% to 73.41\% in the high-enstrophy group,
+gains of 61.42 and 53.97 percentage points. It simultaneously reduces the
+common full-NS residual by 40.6\% and 44.4\%, and continuity residuals by
+36.0\% and 67.3\%. The analytic and discovered variants have similar accuracy,
+as expected from their sub-percent coefficient difference. The discovered
+variant gives the best high-enstrophy physical consistency, while the analytic
+variant is marginally lower in the two low-enstrophy residual means.
 
-\begin{itemize}
-    \item \textbf{No resolved accuracy gain is observed.} The discovered model matches vanilla NoProp's mean accuracy in both groups; the overlapping-crop split, small test set, and seed variation do not support a predictive-improvement claim.
-    \item \textbf{The discovered artifact is operational, not post-hoc.} Training with its coefficients reduces the common SPIDER residual from 0.293 to 0.158 in the centre and from 0.244 to 0.145 at the edge. It also gives the lowest centre continuity residual.
-    \item \textbf{Discovery and analytic priors are empirically distinct.} The discovered coefficient improves the metric it was selected to represent more than the continuum coefficient, while the analytic prior obtains the lowest edge continuity residual. Reporting both avoids conflating prescribed and learned physics.
-    \item \textbf{The high-gradient edge group remains harder.} All variants obtain lower edge accuracy under the internal split, consistent with its larger velocity-gradient proxy and weak mean-velocity label.
-\end{itemize}
-
-These results replace the earlier single-seed validation-only table. Legacy results are not directly comparable because they did not reserve a test set and used joint cross-block back-propagation.
-
-\begin{figure}[htbp]
-\centering
-\includegraphics[width=0.8\textwidth]{figures/fig_region_comparison.png}
-\caption{Legacy single-seed validation comparison retained for historical context. It uses the former joint-training protocol and must not be compared numerically with Table~\ref{tab:main-results}.}
-\label{fig:region-comparison}
-\end{figure}
+The audit and ablation identify the mechanism: the first-frame equation rate
+contains a highly transferable short-horizon signal, whereas the convolutional
+no-equation model remains near the 20\% chance level. PI-NoProp retains most of
+the 84.5--90.7\% one-dimensional oracle performance despite passing through
+the independently trained denoising chain.
 
 \begin{figure}[htbp]
 \centering
-\includegraphics[width=0.85\textwidth]{figures/fig_training_curves.png}
-\caption{Legacy joint-training curves. Optimized local runs are recorded by block update rather than a joint epoch and are stored separately under \texttt{outputs/runs}.}
-\label{fig:training-curves}
+\includegraphics[width=\textwidth]{figures/fig_v2_main_results.png}
+\caption{Matched three-seed comparison. Error bars are sample standard
+deviations. Full-NS and continuity residuals improve strongly under both
+physical objectives, and equation conditioning raises trajectory-disjoint
+future-decay accuracy far above chance.}
+\label{fig:v2-main-results}
 \end{figure}
 
-\subsection{Robustness to Noise}
+\subsection{Expanded Method Baselines}
+\label{sec:expanded-baselines}
+
+To reproduce the broader comparison envisaged in the initial study, we add
+three trajectory-disjoint baselines. \emph{CNN (BP)} is a supervised 3-D CNN
+on the first frame. \emph{Global physics-informed BP} uses the same discovered
+rate and temporal decoder as a globally back-propagated encoder--classifier.
+\emph{SPIDER rate + classifier} fits multinomial logistic regression to the
+single discovered rate in Eq.~\eqref{eq:energy-rate-condition}. The latter has
+only ten fitted classifier parameters and is therefore a deliberately strong,
+interpretable task-specific baseline.
+
+\begin{table}[htbp]
+\centering
+\caption{Expanded trajectory-disjoint baseline comparison over three seeds.
+A dash indicates that the method does not reconstruct a temporal field, so a
+decoded-field NS residual is not defined.}
+\label{tab:expanded-baselines}
+\resizebox{\textwidth}{!}{%
+\begin{tabular}{lcccc}
+\toprule
+& \multicolumn{2}{c}{Low enstrophy} & \multicolumn{2}{c}{High enstrophy} \\
+Method & Accuracy (\%) & $\eta_{\mathrm{NS}}$ & Accuracy (\%) & $\eta_{\mathrm{NS}}$ \\
+\midrule
+CNN (BP) & $14.81\pm1.85$ & -- & $17.06\pm5.63$ & -- \\
+NoProp (vanilla) & $20.37\pm6.07$ & $0.753\pm0.063$ & $19.44\pm5.99$ & $0.634\pm0.240$ \\
+Global physics-informed BP & $80.86\pm5.27$ & $0.998\pm0.001$ & $71.03\pm6.87$ & $0.991\pm0.005$ \\
+SPIDER rate + classifier & $\mathbf{87.96\pm0.00}$ & -- & $\mathbf{84.52\pm0.00}$ & -- \\
+PI-NoProp (discovered NS) & $81.79\pm2.98$ & $\mathbf{0.447\pm0.257}$ & $73.41\pm8.45$ & $\mathbf{0.352\pm0.074}$ \\
+\bottomrule
+\end{tabular}}
+\end{table}
+
+The raw-field CNN and vanilla NoProp remain near chance, confirming that model
+capacity alone does not recover the derivative-sensitive target from nine
+training trajectories. Both equation-conditioned neural methods generalise.
+The scalar SPIDER classifier is most accurate because the benchmark label is a
+quantisation of short-horizon energy decay, which is almost completely
+described by that rate. Unlike this task-specific classifier, PI-NoProp also
+produces a temporal field, enforces local blockwise learning, and achieves a
+substantially lower decoded NS residual than the global BP alternative.
+
+\subsection{Transferred-Relation Ablation}
+\label{sec:relation-ablation}
+
+The accepted momentum artifact and incompressibility imply two additional
+scalar balances. Taking the divergence gives the pressure--Poisson relation;
+dotting momentum with velocity and applying the product rule gives the kinetic
+energy balance. These are algebraically derived from the accepted coefficients,
+not claimed as separately selected SPIDER supports. We add their normalised
+weak residuals successively while preserving the local optimisation protocol.
+
+\begin{table}[htbp]
+\centering
+\caption{Effect of artifact-derived relations in the low-enstrophy group
+(three seeds). Lower residuals are better.}
+\label{tab:equation-ablation}
+\resizebox{\textwidth}{!}{%
+\begin{tabular}{lcccc}
+\toprule
+Variant & Accuracy (\%) & $\eta_{\mathrm{NS}}$ & $\eta_{\mathrm{PP}}$ & $\eta_{\mathrm{energy}}$ \\
+\midrule
+NS + continuity & $81.79\pm1.07$ & $0.473\pm0.250$ & $0.803\pm0.123$ & $0.568\pm0.268$ \\
+NS + continuity + PP & $82.41\pm1.60$ & $0.496\pm0.292$ & $0.511\pm0.226$ & $0.612\pm0.200$ \\
+Full transferred set & $\mathbf{83.02\pm1.41}$ & $\mathbf{0.463\pm0.261}$ & $\mathbf{0.421\pm0.077}$ & $\mathbf{0.437\pm0.281}$ \\
+\bottomrule
+\end{tabular}}
+\end{table}
+
+Pressure--Poisson enforcement lowers its corresponding residual by 36.4\%.
+The full set lowers pressure--Poisson and energy residuals by 47.6\% and 23.1\%
+relative to NS plus continuity, while raising mean accuracy by 1.23 percentage
+points. Thus the extra balances improve their intended diagnostics without an
+accuracy penalty.
+
+\subsection{Noise Robustness}
 \label{sec:noise-robustness}
 
-Figure~\ref{fig:noise-robustness} records an exploratory noise sweep from the legacy joint-training implementation. It is retained to document project history but is not evidence for the optimized strictly local method; a matched multi-seed noise sweep remains future work.
+Clean-trained models are evaluated after adding independent Gaussian noise to
+the first frame. A level of one denotes one discovery-set channel standard
+deviation. Crucially, Eq.~\eqref{eq:energy-rate-condition} is recomputed from
+the noisy field rather than reused from the clean cache. Each entry averages
+five noise realisations for each of three trained seeds.
+
+\begin{table}[htbp]
+\centering
+\caption{Trajectory-disjoint accuracy (\%) under test-time observation noise.}
+\label{tab:noise-prediction}
+\resizebox{\textwidth}{!}{%
+\begin{tabular}{llcccc}
+\toprule
+Region & Method & $\sigma=0$ & $\sigma=0.1$ & $\sigma=0.5$ & $\sigma=1.0$ \\
+\midrule
+Low & Vanilla & $19.88\pm5.32$ & $19.81\pm5.19$ & $20.31\pm5.36$ & $21.48\pm5.67$ \\
+Low & Discovered PI & $77.04\pm1.21$ & $76.73\pm1.78$ & $23.70\pm0.64$ & $16.36\pm0.39$ \\
+High & Vanilla & $17.78\pm3.94$ & $17.78\pm4.08$ & $18.10\pm4.41$ & $18.81\pm4.17$ \\
+High & Discovered PI & $68.49\pm8.55$ & $69.13\pm7.42$ & $34.05\pm0.63$ & $19.52\pm0.48$ \\
+\bottomrule
+\end{tabular}}
+\end{table}
+
+PI-NoProp is stable at $\sigma=0.1$ but loses most of its predictive advantage
+between $\sigma=0.1$ and $0.5$, consistent with noise amplification by spatial
+derivatives. The vanilla model remains near chance at every level and therefore
+does not provide a meaningful robustness reference above chance.
 
 \begin{figure}[htbp]
 \centering
-\includegraphics[width=\textwidth]{figures/fig_noise_robustness.png}
-\caption{Legacy single-run noise sweep from the superseded joint-training implementation. It is shown only as project history and does not support claims about the discovery-informed model.}
-\label{fig:noise-robustness}
+\includegraphics[width=0.92\textwidth]{figures/fig_v3_noise.png}
+\caption{Clean-trained noise sweep. PI-NoProp retains accuracy at 10\% of a
+channel standard deviation but degrades at larger noise. A falling decoded
+residual at high noise does not indicate better prediction; it reflects latent
+collapse toward smoother fields and motivates reporting accuracy jointly.}
+\label{fig:v3-noise}
 \end{figure}
 
-Because this sweep used a different split, a temporal residual constructed from replicated snapshots, and cross-block joint optimisation, no pointwise interpretation is transferred to the present method. A matched three-seed noise study remains future work.
+We also rerun weak SPIDER on noisy observations using all 17 frames and
+$32^3$ weak domains. Table~\ref{tab:spider-noise} replaces the unverified
+symbolic-noise expressions in the initial manuscript with an auditable support
+and coefficient study.
 
-\subsection{Ablation Studies}
-\label{sec:ablations}
-
-\subsubsection{Influence of the Physics Loss Weight}
-\label{sec:lambda-ablation}
-
-We repeat the $\lambda$ sweep using the validated SPIDER artifact, the optimized dimensionless spatial loss, the fixed held-out split, and seeds $\{0,1,2\}$.
-
-\begin{figure}[htbp]
+\begin{table}[htbp]
 \centering
-\includegraphics[width=\textwidth]{figures/fig_lambda_tradeoff.png}
-\caption{Matched three-seed sweep for discovery-informed NoProp on the centre test split. Accuracy is unchanged within the resolution of the 32-sample test set, while the discovered-equation residual decreases monotonically with $\lambda$.}
-\label{fig:lambda-tradeoff}
-\end{figure}
+\caption{Full-NS weak-SPIDER recovery under Gaussian observation noise. All
+levels select the four-term support, but only the clean artifact passes every
+coefficient, residual, separation and bootstrap gate.}
+\label{tab:spider-noise}
+\resizebox{\textwidth}{!}{%
+\begin{tabular}{cccccccc}
+\toprule
+$\sigma$ & $c_{(u\cdot\nabla)u}$ & $c_{\nabla p}$ & $c_{\nabla^2u}$ & Test $\eta$ & Bootstrap & Max. error & Accepted \\
+\midrule
+0.0 & 1.00027 & 1.00027 & $-0.005001$ & $3.85\times10^{-5}$ & 100\% & 0.027\% & Yes \\
+0.1 & 0.98764 & 0.97834 & $-0.009602$ & 0.203 & 53.3\% & 92.0\% & No \\
+0.5 & 0.94396 & 0.89580 & $-0.027920$ & 0.736 & 70.0\% & 458.4\% & No \\
+1.0 & 0.91234 & 0.81063 & $-0.050643$ & 0.911 & 50.0\% & 912.9\% & No \\
+\bottomrule
+\end{tabular}}
+\end{table}
 
-Mean accuracy is 33.33\% at every tested value; its across-seed standard deviation decreases from 6.51 points at $10^{-3}$ to 1.80 points at $10^{-1}$. In contrast, $\eta_{\mathrm{SP}}$ decreases from 0.235 to 0.080. Thus $\lambda$ controls physical adherence but does not rescue the weak classification label. We retain $10^{-2}$ for the main table as a moderate setting rather than choosing $10^{-1}$ after inspecting the test residual.
-
-\subsubsection{Choice of Discovered Equations}
-\label{sec:equation-ablation}
-
-Table~\ref{tab:main-results} is the equation-source ablation: no equation, an analytically prescribed coefficient, and the SPIDER-discovered coefficient. All three use the same architecture, split, seeds, and update count. This directly tests whether discovery changes training, rather than comparing unrelated legacy temporal losses.
-
-\subsubsection{Effect of Decoder Architecture}
-\label{sec:decoder-ablation}
-
-The optimized decoder maps the 128-dimensional latent to a $4\times16\times16\times16$ field and is frozen after feature-conditioned reconstruction pretraining. A dedicated architecture sweep has not been performed; accordingly, decoder expressiveness remains a limitation rather than an indirectly ``confirmed'' property.
-
-\subsection{Analysis of Learned Latent Representations}
-\label{sec:representation-analysis}
-
-Figure~\ref{fig:tsne} is a legacy single-run t-SNE visualisation. It is retained as qualitative project history and has not yet been regenerated for the optimized three-seed checkpoints.
-
-\begin{figure}[htbp]
-\centering
-\includegraphics[width=0.8\textwidth]{figures/fig_tsne.png}
-\caption{Legacy t-SNE visualisation from the superseded joint-training run. It is not evidence for the optimized discovery-informed checkpoints.}
-\label{fig:tsne}
-\end{figure}
-
-Because t-SNE is stochastic and this figure comes from the former joint-training protocol, it is not used as confirmatory evidence in the revised conclusions.
+The weak formulation preserves the qualitative four-term support even at
+large noise, but the viscosity coefficient is not quantitatively identifiable
+from these short trajectories beyond the clean setting. This result is weaker
+than the initial manuscript's intended extreme-noise claim and is reported as
+a current limitation rather than extrapolated into a robustness claim.
 
 \subsection{Computational Efficiency}
 \label{sec:efficiency}
 
-Table~\ref{tab:efficiency} reports the measured complete local block-training phase on an NVIDIA RTX~4060 Laptop GPU (8\,GB), averaged over the three official seeds. Shared encoder/decoder pretraining and subsequent classifier training are excluded.
-
 \begin{table}[htbp]
 \centering
-\caption{Optimized local block-training efficiency (100 updates per block).}
+\caption{Measured local block phase, averaged over three seeds. Shared
+pretraining and detached-classifier training are excluded.}
 \label{tab:efficiency}
-\resizebox{\textwidth}{!}{%
-\begin{tabular}{lccc}
+\begin{tabular}{lcccc}
 \toprule
-Method & Centre time (s) & Edge time (s) & Peak GPU memory (MB) \\
+& \multicolumn{2}{c}{Time (s)} & \multicolumn{2}{c}{Peak memory (MB)}\\
+Method & Low & High & Low & High\\
 \midrule
-Local NoProp (none) & 6.3 & 6.4 & 286 \\
-Local NoProp (analytic) & 14.4 & 14.6 & 499 \\
-Discovery-informed NoProp (SPIDER) & 14.7 & 14.6 & 499 \\
+No physics & 16.0 & 14.4 & 219 & 219\\
+Analytic NS & 29.6 & 29.3 & 302 & 302\\
+Discovered NS & 29.7 & 29.6 & 302 & 302\\
 \bottomrule
 \end{tabular}
-}
 \end{table}
 
-\begin{itemize}
-    \item One uniformly sampled block is updated per step; all ten blocks receive exactly 100 updates, and no cross-block graph is retained.
-    \item The physics path approximately doubles local block time but remains below 15 seconds per formal run; vanilla local training is approximately 6.3 seconds.
-    \item The complete clean regional dataset (128 MB), model, and optimizer state fit comfortably on the 8 GB GPU. The measured peak is below 0.5 GB for the optimized block phase.
-    \item A microbenchmark shows a 4--5.3$\times$ speed-up for the spatial weak loss relative to the legacy duplicated-time loss. First-frame caching also eliminates repeated decompression of approximately 7.4 GB of trajectory NPZ files.
-\end{itemize}
+\begin{figure}[htbp]
+\centering
+\includegraphics[width=0.82\textwidth]{figures/fig_v2_efficiency.png}
+\caption{Local block time and peak allocated GPU memory for the corrected
+comparison. Full spatiotemporal physics roughly doubles block time but remains
+a seconds-scale phase on an 8\,GB consumer GPU.}
+\label{fig:v2-efficiency}
+\end{figure}
+
+The temporal weak loss adds approximately 14 seconds to 1000 local updates.
+Peak allocation remains near 0.30\,GB. Independent optimizers, one sampled block
+per update, mixed precision and a compact $16^3$ decoder retain the central
+computational benefit of local NoProp training.
 
 \subsection{Discussion}
 \label{sec:discussion}
 
-The optimized experiments support a narrower set of conclusions than the original single-run study:
+The study establishes four linked results. First, correcting Fourier
+amplitude scaling and observing dense, unforced time windows allows weak SPIDER
+to recover the complete vector momentum equation rather than only a spatial
+pressure relation. Second, support and coefficient recovery generalise across
+independent trajectories, including an untouched test set. Third, the accepted
+coefficients identify a first-frame energy rate whose target correlation is
+0.996 on unseen trajectories. Fourth, using this rate as a condition and the
+same law on a differentiable temporal decoder raises classification accuracy
+far above chance while reducing full-NS residuals inside isolated NoProp blocks.
+The expanded baselines refine this interpretation: a ten-parameter classifier
+on the discovered scalar rate is the most accurate short-horizon predictor,
+whereas PI-NoProp trades some task-specific accuracy for a temporal physical
+representation and strict gradient locality. Artifact-derived
+pressure--Poisson and energy balances improve their corresponding residuals
+without reducing accuracy.
 
-\begin{enumerate}
-    \item \textbf{Strict locality is achieved:} each block has an independent optimizer, and automated tests verify that non-selected blocks, the frozen encoder, and the frozen decoder receive no gradients.
-    \item \textbf{The discovery-to-training chain is achieved:} a held-out-validated SPIDER artifact is loaded by every local block, and its coefficient transfer is covered by automated tests.
-    \item \textbf{Physical residuals improve:} the discovered model consistently lowers its common SPIDER residual in both regions and gives the lowest centre continuity residual.
-    \item \textbf{Accuracy improvement is not established:} the three-seed means do not improve over vanilla local NoProp. Because crops overlap across index splits, stronger predictive claims require a trajectory- or space-grouped dataset in addition to more samples or a better physical label.
-    \item \textbf{Training is practical:} first-frame/GPU caching, sampled blocks, mixed precision, and spatial weak forms reduce repeated local training to seconds rather than the legacy 10--20 minute joint runs.
-\end{enumerate}
-
-\textbf{The HIT versus channel flow trade-off.} We deliberately chose HIT over the more conventional channel flow benchmark used in \cite{gurevich2024learning}. While channel flow provides natural class separation via the mean velocity profile (centre $\approx$ fast, wall $\approx$ slow), it requires computationally expensive DNS (e.g., $2048\times512\times1536\times4000$ grid) that is inaccessible without supercomputing resources. HIT, solvable at $64^3$ resolution on a single consumer GPU, makes the full experimental pipeline reproducible. The cost is a substantially harder classification task: HIT's statistical homogeneity means that $\langle u_x \rangle \approx 0$ for all subdomains, compressing the class bins into a narrow range. We view this as a strength rather than a weakness: it provides a \textit{stress test} for the physics loss. If PI-NoProp can improve accuracy when the data signal is near the noise floor, it should generalise well to richer datasets where the physics constraint acts in concert with, rather than in lieu of, informative features.
-
-Limitations include: (i) SPIDER recovers a validated spatial pressure relation but not the full forced momentum equation; (ii) the effective coefficient reflects the archived solver's padding convention; (iii) prescribed continuity accompanies the discovered relation; (iv) the $16^3$ integration domain may miss fine-scale violations; and (v) each 32-sample validation/test split has a coarse 3.125 percentage-point resolution.
-
-
-
+The study also defines its current scope. The DNS and discovery data are
+generated by the same audited solver, so external validation on JHTDB or an
+independent DNS code would strengthen the equation-recovery evidence. The
+$64^3$, $Re_\lambda\approx48$ trajectories represent moderate-Reynolds-number
+decaying HIT rather than wall turbulence. The downstream task uses 960 local
+crops and a short prediction horizon; the explicit energy balance is therefore
+a strong low-dimensional predictor and should not be interpreted as evidence
+for arbitrary long-horizon turbulence forecasting. Longer horizons will require
+resolving energy transport across crop boundaries. These limitations do not
+affect the demonstrated support recovery, trajectory-disjoint short-horizon
+prediction or gradient-locality result. Noise experiments identify a further
+boundary: prediction is stable at 10\% of a channel standard deviation, but
+larger independent noise corrupts derivative-based conditioning. Although
+large weak domains retain the qualitative four-term support up to 100\% noise,
+the viscosity coefficient and held-out residual fail the acceptance gates.
 \section{Conclusion}
 \label{sec:conclusion}
 
-We have presented a strictly local discovery-informed NoProp implementation for single-snapshot HIT data. The method discovers a spatial relation from 60 DNS snapshots, validates it on 20 disjoint snapshots and 100 bootstrap refits, persists the result, and rejects unvalidated artifacts. The accepted terms and coefficients are then used directly by independently optimised NoProp blocks.
+We have developed a complete discovery-to-local-learning pipeline for the
+time-dependent Navier--Stokes momentum equation. A numerically audited
+decaying-HIT solver supplies dense independent trajectories; four-dimensional
+weak SPIDER recovers the time, convection, pressure and viscous terms; and a
+validated artifact transfers their measured coefficients into both a
+first-frame energy-rate condition and a frozen temporal decoder inside each
+NoProp block.
 
-SPIDER selects $\nabla^2p+0.293\,\nabla\cdot[(\mathbf u\cdot\nabla)\mathbf u]=0$ with held-out residual 0.286, a 2.30-fold separation from the next support, and 100\% bootstrap support. Continuity is separately identified as prescribed. A frozen compact decoder maps each block latent to a physical integration field, on which dimensionless weak residuals are evaluated. The local physics loss has the form
-\begin{equation}
-\label{eq:physics-loss-conclusion}
-\mathcal{L}_{\text{phys}}^{(t)} = \frac{1}{|\mathcal{K}|}\sum_{k\in\mathcal{K}} \left(|\eta_{t,k}^{\mathrm{div}}|^2+\tfrac12|\eta_{t,k}^{\mathrm{SP}}|^2\right).
-\end{equation}
-Only the sampled block receives the scaled local denoising-plus-physics objective; the classifier is optimised later on detached final latents. Thus the following expression is a conceptual sum, not a joint back-propagation graph:
-\begin{equation}
-\label{eq:total-loss-conclusion}
-\mathcal{L}_{\mathrm{local}} = \sum_{t=1}^T \left(\mathcal L_{\mathrm{diff}}^{(t)}+\lambda\mathcal L_{\mathrm{phys}}^{(t)}\right).
-\end{equation}
+The discovered coefficient vector
+$(1,1.003459,1.003470,-0.00501841)$ has maximum error 0.368\% against DNS
+truth. Its support generalises to untouched trajectories with residual
+$9.70\times10^{-4}$, is separated 40.6-fold from the next candidate, and is
+selected in every trajectory-bootstrap refit. These diagnostics make the
+equation provenance explicit before neural optimisation begins.
 
-We evaluated the framework on the archived forced-HIT run at final $Re_\lambda=30.5$. The verified findings are:
+Matched three-seed experiments show $81.79\pm2.98\%$ and
+$73.41\pm8.45\%$ discovered PI-NoProp accuracy in low- and high-enstrophy
+groups, compared with $20.37\pm6.07\%$ and $19.44\pm5.99\%$ without the
+equation. The common full-NS residual also falls by 40.6\% and 44.4\%.
+Gradient tests verify strict block isolation and schedule-consistent marginals,
+while the full temporal physics phase completes in approximately 30 seconds
+with about 0.30\,GB peak allocation on an RTX~4060 Laptop GPU.
 
-\begin{itemize}
-    \item The discovered model reduces the common SPIDER residual from 0.293 to 0.158 in the centre and from 0.244 to 0.145 at the edge.
-    \item Three-seed test accuracy does not show a statistically reliable advantage over vanilla local NoProp on the weak mean-velocity label.
-    \item Strict block locality is verified by gradient-isolation tests.
-    \item The optimized block phase completes in approximately 6.3 seconds for vanilla local NoProp and 14.6 seconds with spatial constraints, using below 0.5 GB measured peak GPU memory.
-\end{itemize}
+Expanded experiments compare five learning methods, four observation-noise
+levels and three transferred-relation sets. The full set raises low-enstrophy
+accuracy to $83.02\pm1.41\%$ while reducing pressure--Poisson and energy
+residuals relative to momentum plus continuity alone. The noise audit supports
+10\% perturbations but rejects quantitative equation recovery at larger noise,
+making the robustness boundary explicit rather than inheriting the initial
+manuscript's unverified extreme-noise claim.
 
-The current results therefore establish efficient discovery-driven local regularisation, not improved predictive accuracy. The new $\lambda$ sweep shows monotonically improving discovered residual without an accuracy change; the legacy noise study still requires repetition.
+The next stage is external equation validation on JHTDB or an independent DNS
+implementation, followed by longer-horizon observations and targets that
+resolve energy transport across local crop boundaries. The same artifact
+interface also supports adaptive coefficients and other physical systems.
+PI-NoProp therefore supplies a reproducible basis for combining automated
+governing-equation discovery with propagation-free local neural learning.
 
-\textbf{Limitations.} The dataset contains only 256 samples per group. Its labels use the full 32-frame crop even though the classifier receives frame zero, their quantiles use all samples, and random index splits contain extensive same-snapshot spatial overlap. Accuracy is therefore an internal benchmark and not a clean estimate of spatio-temporal generalisation. SPIDER discovers the spatial pressure structure and an effective numerical coefficient, not complete forced Navier--Stokes dynamics. The instantaneous stochastic forcing was not archived, and the discovered 0.293 coefficient exposes a generator-specific padding scale. The compact $16^3$ decoder trades fine-scale fidelity for speed. Legacy CNN, PINN, NoProp-CT, noise, and energy results still require the matched protocol.
 
-\textbf{Future work.} The synergy between local diffusion-based learning and automated equation discovery opens several promising research directions:
-
-\begin{itemize}
-    \item \textbf{End-to-end discovery and learning.} Rather than discovering equations with SPIDER in a separate pre-processing step, one could integrate the sparse regression directly into the training loop, enabling simultaneous optimisation of the network parameters and the discovery of the governing PDEs. This would allow the equations to adapt to the representations learned by the network, potentially uncovering new physics.
-    
-    \item \textbf{Adaptive physics weighting.} Develop meta-learning or Bayesian approaches to automatically tune the physics loss weights $\lambda_t$ based on validation performance or uncertainty estimates, reducing the need for manual cross-validation.
-    
-    \item \textbf{Extension to other physical systems.} Apply physics-informed NoProp to a broader range of scientific domains, such as active matter \cite{marchetti2013hydrodynamics,ramaswamy2010active}, plasma physics \cite{hudson2024sparse}, climate modelling, and biomedical fluid dynamics, where first-principles models are often incomplete or unknown.
-    
-    \item \textbf{Handling parametric and heterogeneous systems.} Generalise the framework to systems with spatially or temporally varying coefficients by representing them as linear combinations of basis functions \cite{rudy2019data} and discovering the coefficient fields simultaneously.
-    
-    \item \textbf{Theoretical analysis.} Investigate the regularisation effect of the weak-form physics loss from the perspectives of statistical learning theory and dynamical systems, potentially linking it to notions of stability, generalisation, and robustness.
-    
-    \item \textbf{Integration with continual learning.} Since NoProp naturally supports blockwise training without global gradient flow, it is well-suited for continual learning scenarios. Incorporating physical constraints could further mitigate catastrophic forgetting by anchoring the representations to invariant physical laws \cite{delange2021continual}.
-\end{itemize}
-
-In conclusion, the project now demonstrates a reproducible chain from sparse weak-form discovery to strictly local neural training. Its strongest verified result is improved adherence to the discovered relation at low computational cost; predictive improvement remains an open question for a larger dataset or a label more directly coupled to local flow physics.
+\section*{Code and data availability}
+The source code, validation tests, discovered-equation artifact, and compact
+aggregate results are publicly available at
+\url{https://github.com/Flyhwjf/PI-NoProp}. The multi-gigabyte generated HIT
+arrays, derived caches, model checkpoints, and per-run histories are excluded
+from the Git repository; scripts and configuration needed to generate the HIT
+data and reproduce the discovery and training pipeline are provided in the
+repository.
 
 
 \section*{Declaration of competing interest}
@@ -903,41 +1252,6 @@ Li, Y., Perlman, E., Wan, M., Yang, Y., Meneveau, C., Burns, R., Chen, S., Szala
 A public turbulence database cluster and applications to study Lagrangian evolution of velocity increments in turbulence. 
 \textit{Journal of Turbulence} 9, N31 (2008).
 
-\bibitem{baydin2022gradients}
-Baydin, A.G., Pearlmutter, B.A., Syme, D., Wood, F., Torr, P. 
-Gradients without backpropagation. 
-\textit{arXiv preprint arXiv:2202.08587} (2022).
-
-\bibitem{ren2022scaling}
-Ren, M., Kornblith, S., Liao, R., Hinton, G. 
-Scaling forward gradient with local losses. 
-\textit{arXiv preprint arXiv:2210.03310} (2022).
-
-\bibitem{belilovsky2019greedy}
-Belilovsky, E., Eickenberg, M., Oyallon, E. 
-Greedy layerwise learning can scale to ImageNet. 
-\textit{International Conference on Machine Learning} (2019).
-
-\bibitem{clark2021credit}
-Clark, D.G., Abbott, L.F., Chung, S. 
-Credit assignment through broadcasting a global error vector. 
-\textit{arXiv preprint arXiv:2106.04089} (2021).
-
-\bibitem{lowe2019putting}
-L{\o}we, S., O'Connor, P., Veeling, B. 
-Putting an end to end-to-end: Gradient-isolated learning of representations. 
-\textit{Advances in Neural Information Processing Systems} 32 (2019).
-
-\bibitem{illing2021local}
-Illing, B., Ventura, J., Bellec, G., Gerstner, W. 
-Local plasticity rules can learn deep representations using self-supervised contrastive predictions. 
-\textit{Advances in Neural Information Processing Systems} 34, 30365--30379 (2021).
-
-\bibitem{halvagal2023combination}
-Halvagal, M.S., Zenke, F. 
-The combination of Hebbian and predictive plasticity learns invariant object representations in deep sensory networks. 
-\textit{Nature Neuroscience} 26, 1906--1915 (2023).
-
 \bibitem{han2022card}
 Han, X., Zheng, H., Zhou, M. 
 CARD: Classification and regression diffusion models. 
@@ -962,11 +1276,6 @@ Flow matching for generative modeling.
 Tong, A., Malkin, N., Huguet, G., Zhang, Y., Rector-Brooks, J., Fatras, K., Wolf, G., Bengio, Y. 
 Improving and generalizing flow-based generative models with minibatch optimal transport. 
 \textit{arXiv preprint arXiv:2302.00482} (2023).
-
-\bibitem{gao2022difformer}
-Gao, Z., Guo, J., Tan, X., Zhu, Y., Zhang, F., Bian, J., Xu, L. 
-Difformer: Empowering diffusion models on the embedding space for text generation. 
-\textit{arXiv preprint arXiv:2212.09412} (2022).
 
 \bibitem{ramaswamy2010active}
 Ramaswamy, S.
@@ -1038,20 +1347,31 @@ A continual learning survey: Defying forgetting in classification tasks.
 \clearpage
 \appendix
 \setcounter{table}{0}
-\section{SPIDER Equation Discovery on HIT Data}
+\section{Full-NS Discovery Audit}
 \label{sec:spider-hit}
 
-The original broad-library run mixed terms of different dimensions, used only the first loaded trajectory, fixed every temporal crop at its first frame, and did not pass its coefficients to the optimized trainer. Its saved vector and scalar relations are therefore classified as legacy failed discovery and are not interpreted physically.
-
-The corrected spatial run uses the complete set of 80 archived $64^3$ snapshots. The first 60 snapshots generate 1920 weak feature rows and the final 20 generate 640 disjoint validation rows. With $\Delta x=2\pi/64$, four random $16^3$ domains per snapshot, eight compact test functions, and the dimensionally homogeneous library
+Nine discovery trajectories generate 1728 weak rows; the three validation and
+three test trajectories each generate 576. With $\Delta x=2\pi/64$,
+$\Delta t=0.002$, two temporal windows, four $16^3$ domains per window, eight
+analytic compact test functions and three momentum components, sparse support
+selection retains
 \[
-\{\nabla^2p,\ \nabla\cdot[(\mathbf u\cdot\nabla)\mathbf u],\ \nabla^2|\mathbf u|^2\},
+\{\partial_t\mathbf u, (\mathbf u\cdot\nabla)\mathbf u,
+\ \nabla p, \nabla^2\mathbf u\}
 \]
-sparse null-space selection retains the first two terms. Fixing the pressure coefficient to one gives $(1,0.2929985)$. The normalized residuals are 0.2811 on discovery rows and 0.2861 on held-out rows; the next-best two-term support obtains 0.6573. All 100 bootstrap samples choose the same support, and the maximum coefficient of variation is 0.0026.
+and rejects $\nabla|\mathbf u|^2$. The normalized residuals are 0.000872,
+0.000951 and 0.000970 on discovery, validation and test trajectories. The
+next-best support obtains 0.038612.
 
-The coefficient is an effective equation parameter for this archived numerical dataset. The solver pads Fourier coefficients from $64^3$ to $96^3$ without the amplitude rescaling normally paired with the inverse transform; the implied factor $(64/96)^3=0.2963$ is close to the discovered 0.2930. We preserve this result because correcting it after discovery would destroy provenance. The analytic ablation uses coefficient one and is reported separately.
-
-The machine-readable artifact records all filenames, physical scales, candidates, coefficients, validation metrics, bootstrap diagnostics, and the absence of analytic fallback. The archived generation log records viscosity $\nu=5\times10^{-3}$, final $Re_\lambda=30.5$, solver step $10^{-3}$, and saved-snapshot spacing $0.05$.
+Normalising the temporal coefficient gives
+\[
+(1,\ 1.0034592,\ 1.0034702,\ -0.00501841).
+\]
+Across 100 complete-trajectory
+bootstrap samples the support frequency is one; coefficient standard
+deviations are $(0,1.89\times10^{-5},3.01\times10^{-5},1.25\times10^{-6})$.
+The machine-readable artifact records the full file list, trajectory split,
+solver metadata, candidates, coefficients and every acceptance diagnostic.
 
 \end{document}
 

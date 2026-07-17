@@ -6,7 +6,7 @@ from pathlib import Path
 
 import torch
 
-sys.path.insert(0, str(Path(__file__).parent.parent))
+sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 
 from src.config import PINoPropConfig
 from src.data.dataset import create_cached_dataloaders

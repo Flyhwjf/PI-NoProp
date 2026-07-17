@@ -76,8 +76,11 @@ class LocalNoPropTrainer:
         field = batch.get('field')
         if field is None:
             field = torch.cat([batch['velocity'], batch['pressure'].unsqueeze(1)], dim=1)
+        terms = batch.get('ns_terms')
+        if terms is not None:
+            terms = terms.to(self.device, non_blocking=True)
         return (field.to(self.device, non_blocking=True),
-                batch['label'].to(self.device, non_blocking=True))
+                batch['label'].to(self.device, non_blocking=True), terms)
 
     @staticmethod
     def _match_spatial_size(target, prediction):
@@ -91,23 +94,20 @@ class LocalNoPropTrainer:
                       starts[2]:starts[2] + sizes[2]]
 
     @torch.no_grad()
-    def _condition_and_target(self, fields, labels):
-        condition = self.model.encode_condition(fields)
+    def _condition_and_target(self, fields, labels, ns_terms=None):
+        condition = self.model.encode_condition(fields, ns_terms)
         target = self.model.label_embed(labels)
         return condition, target
 
     def train_local_step(self, batch, block_index):
         """Update exactly one block and return scalar diagnostics."""
-        fields_true, labels = self._batch(batch)
-        condition, target = self._condition_and_target(fields_true, labels)
+        fields_true, labels, ns_terms = self._batch(batch)
+        condition, target = self._condition_and_target(fields_true, labels, ns_terms)
         t = int(block_index)
         schedule = self.model.noise_schedule
-        if t == 0:
-            alpha_bar_prev = torch.ones((), device=self.device)
-        else:
-            alpha_bar_prev = schedule.alpha_bar[t - 1]
-        z_prev = (alpha_bar_prev.sqrt() * target
-                  + (1 - alpha_bar_prev).sqrt() * torch.randn_like(target))
+        input_signal = schedule.get_input_signal(t)
+        z_prev = (input_signal.sqrt() * target
+                  + (1-input_signal).sqrt() * torch.randn_like(target))
 
         block = self.model.blocks[t]
         optimizer = self.block_optimizers[t]
@@ -124,21 +124,26 @@ class LocalNoPropTrainer:
                 self.config.training.local_rec_weight > 0
                 or (self.config.physics.lambda_weight > 0
                     and (self.config.physics.use_continuity
-                         or self.config.physics.use_pressure_poisson))
+                         or self.config.physics.use_pressure_poisson
+                         or getattr(self.config.physics, 'use_full_ns', False)))
             )
             reconstructed = self.decoder(z_t) if needs_decoder else None
         if reconstructed is not None:
             # Spatial weak integration explicitly accumulates in FP32.
             physics, physics_metrics = self.physics_loss(reconstructed)
+            target_fields = (batch['sequence'].to(self.device, non_blocking=True)
+                             if reconstructed.ndim == 6 else fields_true)
             reconstruction = F.mse_loss(
                 reconstructed.float(),
-                self._match_spatial_size(fields_true, reconstructed).float())
+                self._match_spatial_size(target_fields, reconstructed).float())
         else:
             physics = torch.zeros((), device=self.device)
             reconstruction = torch.zeros((), device=self.device)
             physics_metrics = {
                 'eta_div': torch.zeros((), device=self.device),
                 'eta_pp': torch.zeros((), device=self.device),
+                'eta_ns': torch.zeros((), device=self.device),
+                'eta_energy': torch.zeros((), device=self.device),
             }
         local_loss = self.T * (
             diffusion.float()
@@ -160,6 +165,8 @@ class LocalNoPropTrainer:
             'rec': float(reconstruction.detach()),
             'eta_div': float(physics_metrics['eta_div']),
             'eta_pp': float(physics_metrics['eta_pp']),
+            'eta_ns': float(physics_metrics.get('eta_ns', physics_metrics['eta_pp'])),
+            'eta_energy': float(physics_metrics.get('eta_energy', 0.0)),
             'block': t,
         }
 
@@ -168,7 +175,8 @@ class LocalNoPropTrainer:
         self.model.train()
         self._freeze_shared_modules()
         totals = {key: 0.0 for key in ('loss', 'diff', 'phys', 'rec',
-                                       'eta_div', 'eta_pp')}
+                                       'eta_div', 'eta_pp', 'eta_ns',
+                                       'eta_energy')}
         count = 0
         order = torch.randperm(self.T).tolist()
         for batch_index, batch in enumerate(dataloader):
@@ -211,10 +219,10 @@ class LocalNoPropTrainer:
         self.model.classifier.train()
         total_loss = correct = total = 0
         for batch in dataloader:
-            fields, labels = self._batch(batch)
+            fields, labels, ns_terms = self._batch(batch)
             self.classifier_optimizer.zero_grad(set_to_none=True)
             with torch.no_grad():
-                condition = self.model.encode_condition(fields)
+                condition = self.model.encode_condition(fields, ns_terms)
                 z = torch.randn(labels.shape[0], self.config.noprop.embedding_dim,
                                 device=self.device)
                 for t, block in enumerate(self.model.blocks):
@@ -244,11 +252,12 @@ class LocalNoPropTrainer:
             self.model.eval()
             self.decoder.eval()
             correct = total = 0
-            loss_sum = eta_div = eta_pp = 0.0
+            loss_sum = eta_div = eta_pp = eta_ns = eta_energy = 0.0
             batches = 0
             for batch in dataloader:
-                fields, labels = self._batch(batch)
-                logits, latents = self.model(fields, return_all_latents=True)
+                fields, labels, ns_terms = self._batch(batch)
+                logits, latents = self.model(
+                    fields, ns_terms=ns_terms, return_all_latents=True)
                 loss_sum += float(F.cross_entropy(logits, labels)) * labels.shape[0]
                 correct += int((logits.argmax(-1) == labels).sum())
                 total += labels.shape[0]
@@ -257,12 +266,16 @@ class LocalNoPropTrainer:
                     metrics = self.physics_loss.evaluate_metrics(reconstructed)
                     eta_div += metrics['eta_div']
                     eta_pp += metrics['eta_pp']
+                    eta_ns += metrics.get('eta_ns', metrics['eta_pp'])
+                    eta_energy += metrics.get('eta_energy', 0.0)
                     batches += 1
             result = {'loss': loss_sum / max(total, 1),
                       'accuracy': 100.0 * correct / max(total, 1)}
             if include_physics:
                 result.update(eta_div=eta_div / max(batches, 1),
-                              eta_pp=eta_pp / max(batches, 1))
+                              eta_pp=eta_pp / max(batches, 1),
+                              eta_ns=eta_ns / max(batches, 1),
+                              eta_energy=eta_energy / max(batches, 1))
             return result
 
     def save(self, path, extra=None):

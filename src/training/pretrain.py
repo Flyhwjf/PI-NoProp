@@ -17,6 +17,11 @@ def _field(batch, device):
     return value.to(device, non_blocking=True)
 
 
+def _ns_terms(batch, device):
+    value = batch.get('ns_terms')
+    return None if value is None else value.to(device, non_blocking=True)
+
+
 def _match_spatial_size(target, prediction):
     if target.shape[-3:] == prediction.shape[-3:]:
         return target
@@ -60,7 +65,7 @@ def pretrain_encoder(model, dataloader, config, epochs=None, val_loader=None,
             labels = batch['label'].to(device, non_blocking=True)
             optimizer.zero_grad(set_to_none=True)
             with _autocast(config, device):
-                logits = head(model.encode_condition(fields))
+                logits = head(model.encode_condition(fields, _ns_terms(batch, device)))
                 loss = F.cross_entropy(logits, labels)
             scaler.scale(loss).backward()
             scaler.step(optimizer)
@@ -77,7 +82,8 @@ def pretrain_encoder(model, dataloader, config, epochs=None, val_loader=None,
                 for batch in val_loader:
                     fields = _field(batch, device)
                     labels = batch['label'].to(device, non_blocking=True)
-                    logits = head(model.encode_condition(fields))
+                    logits = head(model.encode_condition(
+                        fields, _ns_terms(batch, device)))
                     val_correct += int((logits.argmax(-1) == labels).sum())
                     val_total += labels.shape[0]
             val_accuracy = 100 * val_correct / max(val_total, 1)
@@ -113,7 +119,7 @@ def align_label_embeddings_to_encoder(model, dataloader, config):
     for batch in dataloader:
         fields = _field(batch, device)
         labels = batch['label'].to(device, non_blocking=True)
-        features = model.encode_condition(fields)
+        features = model.encode_condition(fields, _ns_terms(batch, device))
         sums.index_add_(0, labels, features)
         counts.index_add_(0, labels, torch.ones_like(labels, dtype=torch.float32))
     centroids = sums / counts.clamp_min(1).unsqueeze(1)
@@ -150,13 +156,18 @@ def pretrain_decoder(model, decoder, dataloader, config, epochs=None):
             fields = _field(batch, device)
             optimizer.zero_grad(set_to_none=True)
             with torch.no_grad():
-                z = model.encode_condition(fields)
+                z = model.encode_condition(fields, _ns_terms(batch, device))
                 # Mild latent noise makes the frozen decoder useful around,
                 # not only exactly on, the encoder manifold.
                 z = z + 0.02 * torch.randn_like(z)
             with _autocast(config, device):
                 reconstruction = decoder(z)
-                loss = F.mse_loss(reconstruction, _match_spatial_size(fields, reconstruction))
+                if reconstruction.ndim == 6:
+                    target = batch['sequence'].to(device, non_blocking=True)
+                else:
+                    target = fields
+                loss = F.mse_loss(
+                    reconstruction, _match_spatial_size(target, reconstruction))
             scaler.scale(loss).backward()
             scaler.step(optimizer)
             scaler.update()

@@ -1,0 +1,102 @@
+{
+  "schema_version": 1,
+  "noise_definition": "Gaussian fraction of per-field DNS standard deviation",
+  "levels": {
+    "0.0": {
+      "terms": [
+        "time_derivative",
+        "convection",
+        "pressure_gradient",
+        "velocity_laplacian"
+      ],
+      "coefficients": [
+        1.0,
+        1.0002715505225517,
+        1.0002720731503822,
+        -0.005001310260590665
+      ],
+      "discovery_eta": 3.862784392189139e-05,
+      "validation_eta": 3.2702130348827645e-05,
+      "test_eta": 3.846624179217151e-05,
+      "bootstrap_support_fraction": 1.0,
+      "max_coefficient_relative_error": 0.000272073150382246,
+      "validation_passed_under_noise_protocol": true,
+      "failure_reasons": []
+    },
+    "0.1": {
+      "terms": [
+        "time_derivative",
+        "convection",
+        "pressure_gradient",
+        "velocity_laplacian"
+      ],
+      "coefficients": [
+        1.0,
+        0.9876420031299566,
+        0.9783384605080037,
+        -0.009601978054186597
+      ],
+      "discovery_eta": 0.18590012144682005,
+      "validation_eta": 0.1634698851408889,
+      "test_eta": 0.20333170396565126,
+      "bootstrap_support_fraction": 0.5333333333333333,
+      "max_coefficient_relative_error": 0.9203956108373194,
+      "validation_passed_under_noise_protocol": false,
+      "failure_reasons": [
+        "support separation 1.04 is too small"
+      ]
+    },
+    "0.5": {
+      "terms": [
+        "time_derivative",
+        "convection",
+        "pressure_gradient",
+        "velocity_laplacian"
+      ],
+      "coefficients": [
+        1.0,
+        0.9439572719367617,
+        0.8957980145298706,
+        -0.027919682720644337
+      ],
+      "discovery_eta": 0.7030755735026455,
+      "validation_eta": 0.6085798150002851,
+      "test_eta": 0.7356378264100268,
+      "bootstrap_support_fraction": 0.7,
+      "max_coefficient_relative_error": 4.583936544128867,
+      "validation_passed_under_noise_protocol": false,
+      "failure_reasons": [
+        "validation eta 0.6086 exceeds threshold",
+        "test eta 0.7356 exceeds threshold",
+        "support separation 1.03 is too small",
+        "maximum coefficient error 458.4% exceeds threshold"
+      ]
+    },
+    "1.0": {
+      "terms": [
+        "time_derivative",
+        "convection",
+        "pressure_gradient",
+        "velocity_laplacian"
+      ],
+      "coefficients": [
+        1.0,
+        0.9123409537179993,
+        0.8106329859978894,
+        -0.05064334620462622
+      ],
+      "discovery_eta": 0.8932748345140852,
+      "validation_eta": 0.8109021570914927,
+      "test_eta": 0.9112785183244029,
+      "bootstrap_support_fraction": 0.5,
+      "max_coefficient_relative_error": 9.128669240925245,
+      "validation_passed_under_noise_protocol": false,
+      "failure_reasons": [
+        "validation eta 0.8109 exceeds threshold",
+        "test eta 0.9113 exceeds threshold",
+        "support separation 1.02 is too small",
+        "maximum coefficient error 912.9% exceeds threshold"
+      ]
+    }
+  }
+}

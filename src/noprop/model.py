@@ -24,9 +24,6 @@ class NoPropModel(nn.Module):
         self.config = config
         d_cfg = config.noprop
 
-        spatial_size = config.data.subdomain_size
-        in_features = config.data.n_channels * (spatial_size ** 3)
-
         # Diffusion schedule (moved to device in forward/training)
         self.noise_schedule = NoiseSchedule(T=config.diffusion.T, s=config.diffusion.s)
 
@@ -37,15 +34,33 @@ class NoPropModel(nn.Module):
             learnable=True,
         )
 
-        # Input encoder: (4, H, H, H) → condition_dim
-        # AdaptiveAvgPool3d reduces spatial size before flat Linear
+        # Preserve local derivatives before pooling.  The previous direct
+        # 16^3 -> 4^3 average erased precisely the pressure/velocity-gradient
+        # signal that controls short-horizon energy change.
         self.encoder = nn.Sequential(
-            nn.AdaptiveAvgPool3d((4, 4, 4)),
-            nn.Flatten(),
-            nn.Linear(4 * 4 * 4 * 4, 512),
-            nn.ReLU(),
-            nn.Linear(512, d_cfg.condition_dim),
+            nn.Conv3d(config.data.n_channels, 16, 3, padding=1), nn.GELU(),
+            nn.Conv3d(16, 32, 3, stride=2, padding=1), nn.GELU(),
+            nn.Conv3d(32, 64, 3, stride=2, padding=1), nn.GELU(),
+            nn.AdaptiveAvgPool3d((2, 2, 2)), nn.Flatten(),
+            nn.Linear(64 * 2 * 2 * 2, d_cfg.condition_dim),
         )
+        coefficients = config.physics.condition_coefficients
+        if coefficients is None:
+            self.register_buffer('physics_coefficients', torch.zeros(3))
+            self.physics_condition_enabled = False
+        else:
+            self.register_buffer(
+                'physics_coefficients', torch.as_tensor(coefficients, dtype=torch.float32))
+            self.physics_condition_enabled = True
+        means = torch.as_tensor(config.data.ns_term_means, dtype=torch.float32)
+        covariance = torch.as_tensor(config.data.ns_term_covariance, dtype=torch.float32)
+        physics_mean = self.physics_coefficients @ means
+        physics_variance = self.physics_coefficients @ covariance @ self.physics_coefficients
+        self.register_buffer('physics_mean', physics_mean)
+        self.register_buffer('physics_std', physics_variance.clamp_min(1e-12).sqrt())
+        self.physics_encoder = nn.Sequential(
+            nn.Linear(1, 32), nn.GELU(), nn.Linear(32, d_cfg.condition_dim))
+        self.condition_fusion = nn.Linear(2*d_cfg.condition_dim, d_cfg.condition_dim)
 
         # NoProp blocks
         self.blocks = nn.ModuleList([
@@ -62,13 +77,20 @@ class NoPropModel(nn.Module):
         # Classifier head
         self.classifier = ClassifierHead(d_cfg.embedding_dim, config.data.n_classes)
 
-    def encode_condition(self, x):
-        condition = self.encoder(x)
+    def encode_condition(self, x, ns_terms=None):
+        spatial = self.encoder(x)
+        if self.physics_condition_enabled and ns_terms is not None:
+            rate = ns_terms @ self.physics_coefficients
+            rate = ((rate-self.physics_mean)/self.physics_std).unsqueeze(-1)
+            physical = self.physics_encoder(rate)
+        else:
+            physical = torch.zeros_like(spatial)
+        condition = self.condition_fusion(torch.cat([spatial, physical], dim=-1))
         if getattr(self.config.noprop, 'normalize_condition', False):
             condition = F.normalize(condition, dim=-1) * (condition.shape[-1] ** 0.5)
         return condition
 
-    def forward(self, x, return_all_latents=False):
+    def forward(self, x, ns_terms=None, return_all_latents=False):
         """Inference: denoise from z_0 through all blocks.
 
         Args:
@@ -81,7 +103,7 @@ class NoPropModel(nn.Module):
         device = x.device
 
         # Encode input to condition vector
-        x_cond = self.encode_condition(x)  # (batch_size, condition_dim)
+        x_cond = self.encode_condition(x, ns_terms)  # (batch_size, condition_dim)
 
         # z_0 ~ N(0, I)
         z = torch.randn(batch_size, self.config.noprop.embedding_dim, device=device)
@@ -123,11 +145,7 @@ class NoPropModel(nn.Module):
         x_cond = self.encode_condition(x)
 
         # Sample z_{t-1} ~ q(z_{t-1}|y) = N(sqrt(alpha_bar_{t-1}) * u_y, 1 - alpha_bar_{t-1})
-        alpha_bar = self.noise_schedule.alpha_bar
-        if t == 0:
-            alpha_bar_tm1 = torch.tensor(1.0, device=device)
-        else:
-            alpha_bar_tm1 = alpha_bar[t - 1]
+        alpha_bar_tm1 = self.noise_schedule.get_input_signal(t)
 
         noise = torch.randn_like(u_y)
         z_tm1 = torch.sqrt(alpha_bar_tm1) * u_y + torch.sqrt(1 - alpha_bar_tm1) * noise

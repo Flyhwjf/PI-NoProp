@@ -96,10 +96,11 @@ def plot_training_curves(history, label=None, save_path=None):
 # ─────────────────────────────────────────────────────────────
 
 def plot_data_samples(data_dir, n_slices=3, save_path=None):
-    """Fig D: Centre vs Edge streamwise velocity slices from raw JHTDB data.
+    """Centre vs edge streamwise-velocity slices from generated HIT data.
 
-    Plots 2×3 grid: Centre row (per-row colour scaling) and Edge row.
-    Each column shows a different slice orientation (xy, xz, yz).
+    The stored velocity layout is (component, time, x, y, z). This function
+    plots three orthogonal slices of u_x at frame zero and uses one shared
+    colour range so that the two gradient groups are directly comparable.
 
     Args:
         data_dir: root data directory containing 'centre/' and 'edge/'
@@ -109,44 +110,64 @@ def plot_data_samples(data_dir, n_slices=3, save_path=None):
     d_centre = np.load(data_dir / 'centre' / 'sub_0000.npz')
     d_edge = np.load(data_dir / 'edge' / 'sub_0000.npz')
 
-    ux_centre = d_centre['velocity'][0, :, :, :, 0]
-    ux_edge = d_edge['velocity'][0, :, :, :, 0]
+    velocity_centre = d_centre['velocity']
+    velocity_edge = d_edge['velocity']
+    if velocity_centre.ndim != 5 or velocity_centre.shape[0] != 3:
+        raise ValueError(
+            f'Expected velocity layout (3, time, x, y, z), got '
+            f'{velocity_centre.shape}')
+    if velocity_edge.shape != velocity_centre.shape:
+        raise ValueError(
+            f'Centre/edge velocity shapes differ: {velocity_centre.shape} and '
+            f'{velocity_edge.shape}')
+    ux_centre = velocity_centre[0, 0]
+    ux_edge = velocity_edge[0, 0]
 
-    fig, axes = plt.subplots(2, 3, figsize=(12, 6))
-    titles = ['$u_x$ (xy slice, z=8)', '$u_x$ (xz slice, y=8)', '$u_x$ (yz slice, x=8)']
-    slices_centre = [ux_centre[:, :, 8], ux_centre[:, 8, :], ux_centre[8, :, :]]
-    slices_edge = [ux_edge[:, :, 8], ux_edge[:, 8, :], ux_edge[8, :, :]]
+    fig = plt.figure(figsize=(12, 6))
+    grid = fig.add_gridspec(
+        2, 4, width_ratios=(1, 1, 1, 0.055),
+        left=0.10, right=0.92, bottom=0.10, top=0.82,
+        wspace=0.28, hspace=0.25)
+    axes = np.asarray([[fig.add_subplot(grid[row, col])
+                        for col in range(3)] for row in range(2)])
+    cax = fig.add_subplot(grid[:, 3])
+    mid = ux_centre.shape[0] // 2
+    titles = [f'$u_x$ (xy slice, z={mid})',
+              f'$u_x$ (xz slice, y={mid})',
+              f'$u_x$ (yz slice, x={mid})']
+    slices_centre = [ux_centre[:, :, mid], ux_centre[:, mid, :],
+                     ux_centre[mid, :, :]]
+    slices_edge = [ux_edge[:, :, mid], ux_edge[:, mid, :],
+                   ux_edge[mid, :, :]]
+    vmin = min(item.min() for item in slices_centre + slices_edge)
+    vmax = max(item.max() for item in slices_centre + slices_edge)
+    margin = (vmax - vmin) * 0.03
+    vmin -= margin
+    vmax += margin
 
     for col in range(3):
-        # Centre row — per-column colour range to show subtle variation
         ax = axes[0, col]
-        cmin, cmax = slices_centre[col].min(), slices_centre[col].max()
-        margin = (cmax - cmin) * 0.05
         im = ax.imshow(slices_centre[col], cmap='viridis', aspect='auto',
-                       vmin=cmin - margin, vmax=cmax + margin)
+                       vmin=vmin, vmax=vmax, origin='lower')
         ax.set_title(titles[col], fontsize=19)
         ax.tick_params(labelsize=17)
         if col == 0:
-            ax.set_ylabel('Centre', fontsize=17)
-        cbar = plt.colorbar(im, ax=ax, fraction=0.046)
-        cbar.ax.tick_params(labelsize=17)
+            ax.set_ylabel('Low-gradient (centre)', fontsize=17)
 
-        # Edge row — per-column colour range
         ax = axes[1, col]
-        emin, emax = slices_edge[col].min(), slices_edge[col].max()
-        margin_e = (emax - emin) * 0.05
         im = ax.imshow(slices_edge[col], cmap='viridis', aspect='auto',
-                       vmin=emin - margin_e, vmax=emax + margin_e)
+                       vmin=vmin, vmax=vmax, origin='lower')
         ax.tick_params(labelsize=17)
         if col == 0:
-            ax.set_ylabel('Edge', fontsize=17)
-        cbar = plt.colorbar(im, ax=ax, fraction=0.046)
-        cbar.ax.tick_params(labelsize=17)
+            ax.set_ylabel('High-gradient (edge)', fontsize=17)
 
-    plt.suptitle('JHTDB Channel Flow — Streamwise Velocity $u_x$', fontsize=20)
-    plt.tight_layout()
+    cbar = fig.colorbar(im, cax=cax)
+    cbar.set_label('Streamwise velocity $u_x$', fontsize=17)
+    cbar.ax.tick_params(labelsize=15)
+    fig.suptitle('Generated Homogeneous Isotropic Turbulence — Frame 0',
+                 fontsize=20)
     if save_path:
-        plt.savefig(save_path, dpi=150)
+        plt.savefig(save_path, dpi=300)
     plt.show()
 
 

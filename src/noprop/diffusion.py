@@ -1,7 +1,10 @@
-"""NoProp noise schedule and SNR computation.
+"""Noise-to-label cosine interpolation used by the local NoProp blocks.
 
-Implements the cosine noise schedule from DDPM / NoProp paper.
-Provides alpha_bar, SNR, and the coefficients a_t, b_t, c_t for inference.
+The important invariant is that block ``t`` sees the same marginal at train
+and inference time: block zero starts from pure noise and the final block ends
+at a clean label representation.  The previous implementation used a
+clean-to-noise schedule for training but traversed it noise-to-clean during
+inference.
 """
 import torch
 import numpy as np
@@ -19,32 +22,37 @@ class NoiseSchedule:
         self.s = s
 
         t = torch.linspace(0, T, T + 1)
-        f = torch.cos((t / T + s) / (1 + s) * np.pi / 2) ** 2
-        alpha_bar = f / f[0]
-        self.alpha_bar = alpha_bar[1:]  # T values, remove t=0
-        self.alpha = self.alpha_bar / torch.cat([torch.tensor([1.0]), self.alpha_bar[:-1]])
+        remaining_noise = (
+            torch.cos((t / T + s) / (1 + s) * np.pi / 2) ** 2)
+        remaining_noise = remaining_noise / remaining_noise[0]
+        # Signal level at the input/output boundaries of T blocks.
+        self.signal = (1.0-remaining_noise).clamp(0.0, 1.0)
+        self.signal[0] = 0.0
+        self.signal[-1] = 1.0
+        # Backwards-compatible public names used by diagnostics.
+        self.alpha_bar = self.signal[1:]
+        self.snr = self.alpha_bar / (1-self.alpha_bar).clamp_min(1e-8)
 
-        # SNR(t) = alpha_bar_t / (1 - alpha_bar_t)
-        self.snr = self.alpha_bar / (1 - self.alpha_bar + 1e-8)
-
-        # Inference coefficients (eq.3.1)
-        # z_t = a_t * u_hat + b_t * z_{t-1} + sqrt(c_t) * eps
-        self.a = torch.sqrt(1.0 - self.alpha)
-        self.b = torch.sqrt(self.alpha)
-        self.c = 1.0 - self.alpha
+        # Deterministic DDIM interpolation.  If z_t has marginal
+        # sqrt(g_t)u + sqrt(1-g_t)e, this update has the g_{t+1} marginal
+        # whenever u_hat=u.  Hence train and inference distributions agree.
+        g0, g1 = self.signal[:-1], self.signal[1:]
+        self.b = torch.sqrt((1-g1)/(1-g0).clamp_min(1e-8))
+        self.a = torch.sqrt(g1)-self.b*torch.sqrt(g0)
+        self.c = torch.zeros_like(self.a)
+        self.alpha = self.b.square()
 
     def get_coeffs(self, t):
         """Get (a_t, b_t, c_t) for step t (0-indexed)."""
         return self.a[t], self.b[t], self.c[t]
 
     def get_snr_weight(self, t):
-        """Get |SNR(t) - SNR(t-1)| for diffusion loss weighting (eq.3.2).
+        """Uniform local weighting avoids singular endpoint SNR weights."""
+        return torch.ones((), device=self.signal.device)
 
-        The absolute value ensures a positive weight since SNR decreases with t.
-        """
-        if t == 0:
-            return self.snr[0]
-        return torch.abs(self.snr[t] - self.snr[t - 1])
+    def get_input_signal(self, t):
+        """Signal fraction expected at the input of block ``t``."""
+        return self.signal[t]
 
     def q_sample(self, u_y, t):
         """Sample z_t ~ q(z_t | y) = N(sqrt(alpha_bar_t) * u_y, 1 - alpha_bar_t).
@@ -52,8 +60,8 @@ class NoiseSchedule:
         Uses reparameterization.
         """
         eps = torch.randn_like(u_y)
-        alpha_bar_t = self.alpha_bar[t]
-        z_t = torch.sqrt(alpha_bar_t) * u_y + torch.sqrt(1 - alpha_bar_t) * eps
+        signal_t = self.signal[t+1]
+        z_t = torch.sqrt(signal_t) * u_y + torch.sqrt(1-signal_t) * eps
         return z_t, eps
 
     def to(self, device):
@@ -63,4 +71,5 @@ class NoiseSchedule:
         self.a = self.a.to(device)
         self.b = self.b.to(device)
         self.c = self.c.to(device)
+        self.signal = self.signal.to(device)
         return self

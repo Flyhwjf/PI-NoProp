@@ -8,7 +8,7 @@ import matplotlib
 matplotlib.use('Agg')
 import matplotlib.pyplot as plt
 
-sys.path.insert(0, str(Path(__file__).parent.parent))
+sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 
 from src.visualization import (
     set_global_style,
@@ -23,7 +23,7 @@ from src.visualization import (
 )
 
 set_global_style()
-OUT = Path('paper/figures')
+OUT = Path('paper/figures/legacy')
 OUT.mkdir(parents=True, exist_ok=True)
 DATA = Path('data/generated')
 OUTPUTS = Path('outputs')

@@ -16,16 +16,16 @@ Phases (numbered by execution order):
   12. summary          — Print results table
 
 Usage:
-  python scripts/run_all.py                          # all phases
-  python scripts/run_all.py --phase 5                # only phase 5
-  python scripts/run_all.py --start 3 --stop 7       # phases 3-7
-  python scripts/run_all.py --skip 1,2               # skip DNS and SPIDER
+  python scripts/legacy/run_all.py                          # all phases
+  python scripts/legacy/run_all.py --phase 5                # only phase 5
+  python scripts/legacy/run_all.py --start 3 --stop 7       # phases 3-7
+  python scripts/legacy/run_all.py --skip 1,2               # skip DNS and SPIDER
 """
 import sys, os, time, json, argparse
 from pathlib import Path
 
 # Add src to path
-sys.path.insert(0, str(Path(__file__).parent.parent))
+sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 
 import torch
 import numpy as np
@@ -109,7 +109,7 @@ def phase_generate_data(args):
     print("Phase 1: HIT DNS Data Generation")
     print("=" * 60)
     cmd = [
-        sys.executable, "-u", "scripts/generate_hit.py",
+        sys.executable, "-u", "scripts/legacy/generate_hit.py",
         "--N", "64", "--nu", "0.005", "--force_amp", "10", "--seed", "42",
         "--n_steady", "2000", "--n_sample", "4000", "--save_every", "50",
         "--n_t", "32", "--dt", "0.001",
@@ -659,7 +659,7 @@ def phase_figures(args):
     print("=" * 60)
     # Launch the figure regeneration script
     import subprocess
-    subprocess.run([sys.executable, 'scripts/regenerate_figures.py'], check=True)
+    subprocess.run([sys.executable, 'scripts/legacy/regenerate_figures.py'], check=True)
     print("Figures done.")
 
 

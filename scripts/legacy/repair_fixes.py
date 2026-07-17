@@ -2,7 +2,7 @@
 repair_fixes.py — Run only the PINN and PI-NoProp re-trainings needed after bug fixes.
 """
 import sys, os, time, json, torch
-sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), '..'))
+sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', '..'))
 
 from src.config import PINoPropConfig
 from src.data.dataset import create_dataloaders

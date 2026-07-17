@@ -11,7 +11,7 @@ import numpy as np
 
 
 def main():
-    out = Path('paper/figures')
+    out = Path('paper/figures/legacy')
     out.mkdir(parents=True, exist_ok=True)
     artifact = json.loads(Path('outputs/spider/hit_spatial_equation.json').read_text())
     results = json.loads(Path('outputs/aggregate/discovery_results.json').read_text())
@@ -31,7 +31,7 @@ def main():
     axes[1].bar(['selected support', 'next-best support'], values,
                 color=['#3a9d5d', '#999999'])
     axes[1].set_ylabel('Held-out normalized residual')
-    axes[1].set_title('Independent validation')
+    axes[1].set_title('Held-out validation')
     axes[1].text(0, values[0] + 0.02, '100% bootstrap\nsupport',
                  ha='center', va='bottom', fontsize=9)
     fig.savefig(out / 'fig_spider_discovery.png', dpi=300, bbox_inches='tight')

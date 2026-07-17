@@ -1,0 +1,601 @@
+{
+  "schema_version": 2,
+  "method": "trajectory-disjoint 4-D weak-form SPIDER",
+  "source": "trajectory-disjoint decaying HIT for full-NS discovery",
+  "config": {
+    "dataset_dir": "data/generated_hit_ns_v2",
+    "domain_size": 16,
+    "time_window": 9,
+    "windows_per_trajectory": 2,
+    "domains_per_window": 4,
+    "n_test_functions": 8,
+    "beta": 4.0,
+    "max_terms": 5,
+    "selection_eta": 0.01,
+    "max_validation_eta": 0.02,
+    "max_test_eta": 0.02,
+    "min_support_separation": 1.25,
+    "min_bootstrap_support": 0.9,
+    "max_coefficient_relative_error": 0.1,
+    "bootstrap_repeats": 100,
+    "seed": 42
+  },
+  "data": {
+    "dataset_manifest": "data\\generated_hit_ns_v2\\manifest.json",
+    "trajectory_splits": {
+      "discovery": [
+        0,
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7,
+        8
+      ],
+      "validation": [
+        9,
+        10,
+        11
+      ],
+      "test": [
+        12,
+        13,
+        14
+      ]
+    },
+    "rows": {
+      "discovery": 1728,
+      "validation": 576,
+      "test": 576
+    },
+    "files": {
+      "discovery": [
+        "trajectory_000\\frame_000.npz",
+        "trajectory_000\\frame_001.npz",
+        "trajectory_000\\frame_002.npz",
+        "trajectory_000\\frame_003.npz",
+        "trajectory_000\\frame_004.npz",
+        "trajectory_000\\frame_005.npz",
+        "trajectory_000\\frame_006.npz",
+        "trajectory_000\\frame_007.npz",
+        "trajectory_000\\frame_008.npz",
+        "trajectory_000\\frame_009.npz",
+        "trajectory_000\\frame_010.npz",
+        "trajectory_000\\frame_011.npz",
+        "trajectory_000\\frame_012.npz",
+        "trajectory_000\\frame_013.npz",
+        "trajectory_000\\frame_014.npz",
+        "trajectory_000\\frame_015.npz",
+        "trajectory_000\\frame_016.npz",
+        "trajectory_001\\frame_000.npz",
+        "trajectory_001\\frame_001.npz",
+        "trajectory_001\\frame_002.npz",
+        "trajectory_001\\frame_003.npz",
+        "trajectory_001\\frame_004.npz",
+        "trajectory_001\\frame_005.npz",
+        "trajectory_001\\frame_006.npz",
+        "trajectory_001\\frame_007.npz",
+        "trajectory_001\\frame_008.npz",
+        "trajectory_001\\frame_009.npz",
+        "trajectory_001\\frame_010.npz",
+        "trajectory_001\\frame_011.npz",
+        "trajectory_001\\frame_012.npz",
+        "trajectory_001\\frame_013.npz",
+        "trajectory_001\\frame_014.npz",
+        "trajectory_001\\frame_015.npz",
+        "trajectory_001\\frame_016.npz",
+        "trajectory_002\\frame_000.npz",
+        "trajectory_002\\frame_001.npz",
+        "trajectory_002\\frame_002.npz",
+        "trajectory_002\\frame_003.npz",
+        "trajectory_002\\frame_004.npz",
+        "trajectory_002\\frame_005.npz",
+        "trajectory_002\\frame_006.npz",
+        "trajectory_002\\frame_007.npz",
+        "trajectory_002\\frame_008.npz",
+        "trajectory_002\\frame_009.npz",
+        "trajectory_002\\frame_010.npz",
+        "trajectory_002\\frame_011.npz",
+        "trajectory_002\\frame_012.npz",
+        "trajectory_002\\frame_013.npz",
+        "trajectory_002\\frame_014.npz",
+        "trajectory_002\\frame_015.npz",
+        "trajectory_002\\frame_016.npz",
+        "trajectory_003\\frame_000.npz",
+        "trajectory_003\\frame_001.npz",
+        "trajectory_003\\frame_002.npz",
+        "trajectory_003\\frame_003.npz",
+        "trajectory_003\\frame_004.npz",
+        "trajectory_003\\frame_005.npz",
+        "trajectory_003\\frame_006.npz",
+        "trajectory_003\\frame_007.npz",
+        "trajectory_003\\frame_008.npz",
+        "trajectory_003\\frame_009.npz",
+        "trajectory_003\\frame_010.npz",
+        "trajectory_003\\frame_011.npz",
+        "trajectory_003\\frame_012.npz",
+        "trajectory_003\\frame_013.npz",
+        "trajectory_003\\frame_014.npz",
+        "trajectory_003\\frame_015.npz",
+        "trajectory_003\\frame_016.npz",
+        "trajectory_004\\frame_000.npz",
+        "trajectory_004\\frame_001.npz",
+        "trajectory_004\\frame_002.npz",
+        "trajectory_004\\frame_003.npz",
+        "trajectory_004\\frame_004.npz",
+        "trajectory_004\\frame_005.npz",
+        "trajectory_004\\frame_006.npz",
+        "trajectory_004\\frame_007.npz",
+        "trajectory_004\\frame_008.npz",
+        "trajectory_004\\frame_009.npz",
+        "trajectory_004\\frame_010.npz",
+        "trajectory_004\\frame_011.npz",
+        "trajectory_004\\frame_012.npz",
+        "trajectory_004\\frame_013.npz",
+        "trajectory_004\\frame_014.npz",
+        "trajectory_004\\frame_015.npz",
+        "trajectory_004\\frame_016.npz",
+        "trajectory_005\\frame_000.npz",
+        "trajectory_005\\frame_001.npz",
+        "trajectory_005\\frame_002.npz",
+        "trajectory_005\\frame_003.npz",
+        "trajectory_005\\frame_004.npz",
+        "trajectory_005\\frame_005.npz",
+        "trajectory_005\\frame_006.npz",
+        "trajectory_005\\frame_007.npz",
+        "trajectory_005\\frame_008.npz",
+        "trajectory_005\\frame_009.npz",
+        "trajectory_005\\frame_010.npz",
+        "trajectory_005\\frame_011.npz",
+        "trajectory_005\\frame_012.npz",
+        "trajectory_005\\frame_013.npz",
+        "trajectory_005\\frame_014.npz",
+        "trajectory_005\\frame_015.npz",
+        "trajectory_005\\frame_016.npz",
+        "trajectory_006\\frame_000.npz",
+        "trajectory_006\\frame_001.npz",
+        "trajectory_006\\frame_002.npz",
+        "trajectory_006\\frame_003.npz",
+        "trajectory_006\\frame_004.npz",
+        "trajectory_006\\frame_005.npz",
+        "trajectory_006\\frame_006.npz",
+        "trajectory_006\\frame_007.npz",
+        "trajectory_006\\frame_008.npz",
+        "trajectory_006\\frame_009.npz",
+        "trajectory_006\\frame_010.npz",
+        "trajectory_006\\frame_011.npz",
+        "trajectory_006\\frame_012.npz",
+        "trajectory_006\\frame_013.npz",
+        "trajectory_006\\frame_014.npz",
+        "trajectory_006\\frame_015.npz",
+        "trajectory_006\\frame_016.npz",
+        "trajectory_007\\frame_000.npz",
+        "trajectory_007\\frame_001.npz",
+        "trajectory_007\\frame_002.npz",
+        "trajectory_007\\frame_003.npz",
+        "trajectory_007\\frame_004.npz",
+        "trajectory_007\\frame_005.npz",
+        "trajectory_007\\frame_006.npz",
+        "trajectory_007\\frame_007.npz",
+        "trajectory_007\\frame_008.npz",
+        "trajectory_007\\frame_009.npz",
+        "trajectory_007\\frame_010.npz",
+        "trajectory_007\\frame_011.npz",
+        "trajectory_007\\frame_012.npz",
+        "trajectory_007\\frame_013.npz",
+        "trajectory_007\\frame_014.npz",
+        "trajectory_007\\frame_015.npz",
+        "trajectory_007\\frame_016.npz",
+        "trajectory_008\\frame_000.npz",
+        "trajectory_008\\frame_001.npz",
+        "trajectory_008\\frame_002.npz",
+        "trajectory_008\\frame_003.npz",
+        "trajectory_008\\frame_004.npz",
+        "trajectory_008\\frame_005.npz",
+        "trajectory_008\\frame_006.npz",
+        "trajectory_008\\frame_007.npz",
+        "trajectory_008\\frame_008.npz",
+        "trajectory_008\\frame_009.npz",
+        "trajectory_008\\frame_010.npz",
+        "trajectory_008\\frame_011.npz",
+        "trajectory_008\\frame_012.npz",
+        "trajectory_008\\frame_013.npz",
+        "trajectory_008\\frame_014.npz",
+        "trajectory_008\\frame_015.npz",
+        "trajectory_008\\frame_016.npz"
+      ],
+      "validation": [
+        "trajectory_009\\frame_000.npz",
+        "trajectory_009\\frame_001.npz",
+        "trajectory_009\\frame_002.npz",
+        "trajectory_009\\frame_003.npz",
+        "trajectory_009\\frame_004.npz",
+        "trajectory_009\\frame_005.npz",
+        "trajectory_009\\frame_006.npz",
+        "trajectory_009\\frame_007.npz",
+        "trajectory_009\\frame_008.npz",
+        "trajectory_009\\frame_009.npz",
+        "trajectory_009\\frame_010.npz",
+        "trajectory_009\\frame_011.npz",
+        "trajectory_009\\frame_012.npz",
+        "trajectory_009\\frame_013.npz",
+        "trajectory_009\\frame_014.npz",
+        "trajectory_009\\frame_015.npz",
+        "trajectory_009\\frame_016.npz",
+        "trajectory_010\\frame_000.npz",
+        "trajectory_010\\frame_001.npz",
+        "trajectory_010\\frame_002.npz",
+        "trajectory_010\\frame_003.npz",
+        "trajectory_010\\frame_004.npz",
+        "trajectory_010\\frame_005.npz",
+        "trajectory_010\\frame_006.npz",
+        "trajectory_010\\frame_007.npz",
+        "trajectory_010\\frame_008.npz",
+        "trajectory_010\\frame_009.npz",
+        "trajectory_010\\frame_010.npz",
+        "trajectory_010\\frame_011.npz",
+        "trajectory_010\\frame_012.npz",
+        "trajectory_010\\frame_013.npz",
+        "trajectory_010\\frame_014.npz",
+        "trajectory_010\\frame_015.npz",
+        "trajectory_010\\frame_016.npz",
+        "trajectory_011\\frame_000.npz",
+        "trajectory_011\\frame_001.npz",
+        "trajectory_011\\frame_002.npz",
+        "trajectory_011\\frame_003.npz",
+        "trajectory_011\\frame_004.npz",
+        "trajectory_011\\frame_005.npz",
+        "trajectory_011\\frame_006.npz",
+        "trajectory_011\\frame_007.npz",
+        "trajectory_011\\frame_008.npz",
+        "trajectory_011\\frame_009.npz",
+        "trajectory_011\\frame_010.npz",
+        "trajectory_011\\frame_011.npz",
+        "trajectory_011\\frame_012.npz",
+        "trajectory_011\\frame_013.npz",
+        "trajectory_011\\frame_014.npz",
+        "trajectory_011\\frame_015.npz",
+        "trajectory_011\\frame_016.npz"
+      ],
+      "test": [
+        "trajectory_012\\frame_000.npz",
+        "trajectory_012\\frame_001.npz",
+        "trajectory_012\\frame_002.npz",
+        "trajectory_012\\frame_003.npz",
+        "trajectory_012\\frame_004.npz",
+        "trajectory_012\\frame_005.npz",
+        "trajectory_012\\frame_006.npz",
+        "trajectory_012\\frame_007.npz",
+        "trajectory_012\\frame_008.npz",
+        "trajectory_012\\frame_009.npz",
+        "trajectory_012\\frame_010.npz",
+        "trajectory_012\\frame_011.npz",
+        "trajectory_012\\frame_012.npz",
+        "trajectory_012\\frame_013.npz",
+        "trajectory_012\\frame_014.npz",
+        "trajectory_012\\frame_015.npz",
+        "trajectory_012\\frame_016.npz",
+        "trajectory_013\\frame_000.npz",
+        "trajectory_013\\frame_001.npz",
+        "trajectory_013\\frame_002.npz",
+        "trajectory_013\\frame_003.npz",
+        "trajectory_013\\frame_004.npz",
+        "trajectory_013\\frame_005.npz",
+        "trajectory_013\\frame_006.npz",
+        "trajectory_013\\frame_007.npz",
+        "trajectory_013\\frame_008.npz",
+        "trajectory_013\\frame_009.npz",
+        "trajectory_013\\frame_010.npz",
+        "trajectory_013\\frame_011.npz",
+        "trajectory_013\\frame_012.npz",
+        "trajectory_013\\frame_013.npz",
+        "trajectory_013\\frame_014.npz",
+        "trajectory_013\\frame_015.npz",
+        "trajectory_013\\frame_016.npz",
+        "trajectory_014\\frame_000.npz",
+        "trajectory_014\\frame_001.npz",
+        "trajectory_014\\frame_002.npz",
+        "trajectory_014\\frame_003.npz",
+        "trajectory_014\\frame_004.npz",
+        "trajectory_014\\frame_005.npz",
+        "trajectory_014\\frame_006.npz",
+        "trajectory_014\\frame_007.npz",
+        "trajectory_014\\frame_008.npz",
+        "trajectory_014\\frame_009.npz",
+        "trajectory_014\\frame_010.npz",
+        "trajectory_014\\frame_011.npz",
+        "trajectory_014\\frame_012.npz",
+        "trajectory_014\\frame_013.npz",
+        "trajectory_014\\frame_014.npz",
+        "trajectory_014\\frame_015.npz",
+        "trajectory_014\\frame_016.npz"
+      ]
+    },
+    "viscosity_used_only_for_post_discovery_validation": 0.005
+  },
+  "candidate_terms": [
+    "time_derivative",
+    "convection",
+    "pressure_gradient",
+    "velocity_laplacian",
+    "kinetic_energy_gradient"
+  ],
+  "equation": {
+    "terms": [
+      "time_derivative",
+      "convection",
+      "pressure_gradient",
+      "velocity_laplacian"
+    ],
+    "coefficients": [
+      1.0,
+      1.003459200028064,
+      1.0034701727876134,
+      -0.005018407866219873
+    ],
+    "normalization": "time-derivative coefficient fixed to one"
+  },
+  "expected_equation_for_post_discovery_audit": {
+    "terms": [
+      "time_derivative",
+      "convection",
+      "pressure_gradient",
+      "velocity_laplacian"
+    ],
+    "coefficients": [
+      1.0,
+      1.0,
+      1.0,
+      -0.005
+    ]
+  },
+  "metrics": {
+    "discovery_eta": 0.0008719135087891829,
+    "validation_eta": 0.0009505381366535574,
+    "test_eta": 0.0009699582370168326,
+    "next_best_validation_eta": 0.03861218620085303,
+    "support_separation_ratio": 40.621396145966536,
+    "bootstrap_support_fraction": 1.0,
+    "bootstrap_coefficient_mean": [
+      1.0,
+      1.0034623031329404,
+      1.0034740949647871,
+      -0.005018407446049453
+    ],
+    "bootstrap_coefficient_std": [
+      0.0,
+      1.8897498570536732e-05,
+      3.0088889074913436e-05,
+      1.249807673632507e-06
+    ],
+    "coefficient_relative_errors": {
+      "time_derivative": 0.0,
+      "convection": 0.003459200028063991,
+      "pressure_gradient": 0.0034701727876134125,
+      "velocity_laplacian": 0.0036815732439745077
+    },
+    "max_coefficient_relative_error": 0.0036815732439745077
+  },
+  "validation": {
+    "passed": true,
+    "failure_reasons": []
+  },
+  "candidates": [
+    {
+      "terms": [
+        "time_derivative",
+        "convection"
+      ],
+      "coefficients": [
+        1.0,
+        0.498532750173139
+      ],
+      "discovery_eta": 0.519792019232614,
+      "validation_eta": 0.6384634684441252
+    },
+    {
+      "terms": [
+        "time_derivative",
+        "pressure_gradient"
+      ],
+      "coefficients": [
+        1.0,
+        -0.16593791789467038
+      ],
+      "discovery_eta": 0.9728773252889212,
+      "validation_eta": 1.0188663408146406
+    },
+    {
+      "terms": [
+        "time_derivative",
+        "velocity_laplacian"
+      ],
+      "coefficients": [
+        1.0,
+        -0.0069715892856360715
+      ],
+      "discovery_eta": 0.9865889869465162,
+      "validation_eta": 0.9550348237178793
+    },
+    {
+      "terms": [
+        "time_derivative",
+        "kinetic_energy_gradient"
+      ],
+      "coefficients": [
+        1.0,
+        -0.00968247438948638
+      ],
+      "discovery_eta": 0.999659374032627,
+      "validation_eta": 0.9986431143817862
+    },
+    {
+      "terms": [
+        "time_derivative",
+        "convection",
+        "pressure_gradient"
+      ],
+      "coefficients": [
+        1.0,
+        1.0065264901094244,
+        1.0083102622619577
+      ],
+      "discovery_eta": 0.04004878745768569,
+      "validation_eta": 0.03888358398845568
+    },
+    {
+      "terms": [
+        "time_derivative",
+        "convection",
+        "velocity_laplacian"
+      ],
+      "coefficients": [
+        1.0,
+        0.4977242304348941,
+        -0.006452540617616138
+      ],
+      "discovery_eta": 0.5111064253281323,
+      "validation_eta": 0.6185594685155167
+    },
+    {
+      "terms": [
+        "time_derivative",
+        "convection",
+        "kinetic_energy_gradient"
+      ],
+      "coefficients": [
+        1.0,
+        0.5216897990609217,
+        -0.09264219871556773
+      ],
+      "discovery_eta": 0.48804051477014637,
+      "validation_eta": 0.5785314869591872
+    },
+    {
+      "terms": [
+        "time_derivative",
+        "pressure_gradient",
+        "velocity_laplacian"
+      ],
+      "coefficients": [
+        1.0,
+        -0.16772875732812387,
+        -0.0071231480689214945
+      ],
+      "discovery_eta": 0.958972104475013,
+      "validation_eta": 0.9763045233754328
+    },
+    {
+      "terms": [
+        "time_derivative",
+        "pressure_gradient",
+        "kinetic_energy_gradient"
+      ],
+      "coefficients": [
+        1.0,
+        -0.19288469945566716,
+        -0.042938394237208716
+      ],
+      "discovery_eta": 0.9622568242727774,
+      "validation_eta": 1.007330139795876
+    },
+    {
+      "terms": [
+        "time_derivative",
+        "velocity_laplacian",
+        "kinetic_energy_gradient"
+      ],
+      "coefficients": [
+        1.0,
+        -0.007118126997093486,
+        -0.01499851287101472
+      ],
+      "discovery_eta": 0.9855070522987204,
+      "validation_eta": 0.9516585780341844
+    },
+    {
+      "terms": [
+        "time_derivative",
+        "convection",
+        "pressure_gradient",
+        "velocity_laplacian"
+      ],
+      "coefficients": [
+        1.0,
+        1.003459200028064,
+        1.0034701727876134,
+        -0.005018407866219873
+      ],
+      "discovery_eta": 0.0008719135087891829,
+      "validation_eta": 0.0009505381366535574
+    },
+    {
+      "terms": [
+        "time_derivative",
+        "convection",
+        "pressure_gradient",
+        "kinetic_energy_gradient"
+      ],
+      "coefficients": [
+        1.0,
+        1.007271408179443,
+        1.0120899610949992,
+        0.0046379832605480025
+      ],
+      "discovery_eta": 0.03979907899810224,
+      "validation_eta": 0.03861218620085303
+    },
+    {
+      "terms": [
+        "time_derivative",
+        "convection",
+        "velocity_laplacian",
+        "kinetic_energy_gradient"
+      ],
+      "coefficients": [
+        1.0,
+        0.5221619473128744,
+        -0.0073868165984893605,
+        -0.09823398451196165
+      ],
+      "discovery_eta": 0.47578481165931824,
+      "validation_eta": 0.5519407636896865
+    },
+    {
+      "terms": [
+        "time_derivative",
+        "pressure_gradient",
+        "velocity_laplacian",
+        "kinetic_energy_gradient"
+      ],
+      "coefficients": [
+        1.0,
+        -0.1990513951453457,
+        -0.007637078488782107,
+        -0.049705223208832756
+      ],
+      "discovery_eta": 0.944825658938789,
+      "validation_eta": 0.9593576462290595
+    },
+    {
+      "terms": [
+        "time_derivative",
+        "convection",
+        "pressure_gradient",
+        "velocity_laplacian",
+        "kinetic_energy_gradient"
+      ],
+      "coefficients": [
+        1.0,
+        1.0034611330715937,
+        1.00347971683638,
+        -0.005018284234898436,
+        1.1564972472632144e-05
+      ],
+      "discovery_eta": 0.0008718544449296315,
+      "validation_eta": 0.0009505801716910444
+    }
+  ]
+}

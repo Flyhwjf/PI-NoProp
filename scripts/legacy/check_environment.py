@@ -9,7 +9,7 @@ try:
 except ImportError as exc:
     raise SystemExit(
         'PyTorch is not installed in this interpreter. Use the maclearn environment:\n'
-        'conda run -n maclearn python scripts/run_fast.py --help'
+        'conda run -n maclearn python scripts/legacy/run_fast.py --help'
     ) from exc
 
 report = {

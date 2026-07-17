@@ -1,0 +1,31 @@
+{
+  "schema_version": 1,
+  "regions": {
+    "low_enstrophy": {
+      "first_frame_discovered_ns_accuracy": {
+        "train": 90.625,
+        "validation": 95.45454545454545,
+        "test": 90.74074074074075
+      },
+      "two_frame_sanity_accuracy": {
+        "train": 95.83333333333334,
+        "validation": 98.86363636363636,
+        "test": 96.29629629629629
+      },
+      "ns_rate_target_correlation_test": 0.9959355408312349
+    },
+    "high_enstrophy": {
+      "first_frame_discovered_ns_accuracy": {
+        "train": 90.625,
+        "validation": 92.3076923076923,
+        "test": 84.52380952380952
+      },
+      "two_frame_sanity_accuracy": {
+        "train": 95.48611111111111,
+        "validation": 97.11538461538461,
+        "test": 95.23809523809523
+      },
+      "ns_rate_target_correlation_test": 0.9961415049923655
+    }
+  }
+}

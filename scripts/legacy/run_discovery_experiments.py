@@ -7,7 +7,8 @@ import sys
 
 
 def run(arguments):
-    command = [sys.executable, 'scripts/run_fast.py', '--steps-per-block', '100'] + arguments
+    command = [sys.executable, 'scripts/legacy/run_fast.py',
+               '--steps-per-block', '100'] + arguments
     print('\nRUN:', ' '.join(command), flush=True)
     subprocess.run(command, check=True)
 
