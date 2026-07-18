@@ -1,6 +1,7 @@
 """Noise robustness of clean-trained vanilla and discovered PI-NoProp."""
 from __future__ import annotations
 
+import argparse
 import json
 import sys
 from pathlib import Path
@@ -19,36 +20,43 @@ from src.physics.temporal_ns_loss import TemporalNSPhysicsLoss
 REGIONS = ('low_enstrophy', 'high_enstrophy')
 METHODS = ('none', 'discovered')
 SEEDS = (42, 123, 456)
-LEVELS = (0.0, 0.1, 0.5, 1.0)
+LEVELS = (0.0, 0.01, 0.05, 0.1, 0.2, 0.5, 1.0)
 REPETITIONS = 5
 
 
 def ns_terms_from_standardized(fields, means, stds, dx):
-    physical = fields*stds+means
+    output_dtype = fields.dtype
+    # Match the float64, second-order cache construction on clean inputs.
+    physical = (fields*stds+means).double()
     velocity, pressure = physical[:, :3], physical[:, 3]
     gradients = torch.stack([
-        torch.gradient(velocity, spacing=dx, dim=axis+2)[0]
+        torch.gradient(velocity, spacing=dx, dim=axis+2, edge_order=2)[0]
         for axis in range(3)], dim=2)
     convection = torch.einsum('bjxyz,bijxyz->bixyz', velocity, gradients)
     pressure_gradient = torch.stack([
-        torch.gradient(pressure, spacing=dx, dim=axis+1)[0]
+        torch.gradient(pressure, spacing=dx, dim=axis+1, edge_order=2)[0]
         for axis in range(3)], dim=1)
     laplacian = sum(
-        torch.gradient(torch.gradient(velocity, spacing=dx, dim=axis+2)[0],
-                       spacing=dx, dim=axis+2)[0]
+        torch.gradient(torch.gradient(
+            velocity, spacing=dx, dim=axis+2, edge_order=2)[0],
+            spacing=dx, dim=axis+2, edge_order=2)[0]
         for axis in range(3))
     energy = 0.5*velocity.square().sum(1).mean((1, 2, 3)).clamp_min(1e-12)
     return torch.stack([
         (velocity*term).sum(1).mean((1, 2, 3))/energy
-        for term in (convection, pressure_gradient, laplacian)], dim=1)
+        for term in (convection, pressure_gradient, laplacian)], dim=1).to(output_dtype)
 
 
 @torch.no_grad()
-def evaluate(model, decoder, physics, loader, level, repetition, means, stds, dx):
+def evaluate(model, decoder, physics, loader, level, repetition, means, stds, dx,
+             model_seed):
     device = means.device
     generator = torch.Generator(device=device).manual_seed(91_000+repetition)
-    torch.manual_seed(71_000+repetition)
-    if device.type == 'cuda': torch.cuda.manual_seed_all(71_000+repetition)
+    # Match the main evaluation and hold NoProp's initial latent fixed while
+    # varying only the observation-noise realization.
+    inference_seed = int(model_seed)+10_000
+    torch.manual_seed(inference_seed)
+    if device.type == 'cuda': torch.cuda.manual_seed_all(inference_seed)
     model.eval(); decoder.eval(); correct = total = 0; ns = batches = 0
     for batch in loader:
         fields = batch['field'].to(device)
@@ -63,16 +71,37 @@ def evaluate(model, decoder, physics, loader, level, repetition, means, stds, dx
 
 
 def main():
+    parser = argparse.ArgumentParser()
+    parser.add_argument('--overwrite', action='store_true')
+    args = parser.parse_args()
     artifact = json.loads((ROOT/'outputs/spider/full_ns_equation.json').read_text())
-    result = {'schema_version': 2, 'protocol': {
+    output = ROOT/'outputs/aggregate/full_ns_noise.json'
+    previous = None
+    if output.exists() and not args.overwrite:
+        previous = json.loads(output.read_text())
+    result = {'schema_version': 4, 'protocol': {
         'levels_in_channel_standard_deviations': list(LEVELS),
+        'noise_definition': 'additive standard Gaussian noise in discovery-standardised channel units',
         'seeds': list(SEEDS), 'repetitions_per_seed': REPETITIONS,
         'clean_trained': True, 'trajectory_disjoint_test': True,
+        'inference_latent': 'fixed per trained-model seed across noise levels and repetitions',
+        'varied_randomness': 'observation noise only',
         'model_revision': 'trainable-physics-condition-fusion'}, 'results': {}}
     for region in REGIONS:
         result['results'][region] = {}
         for method in METHODS:
-            seed_records = {level: {'accuracy': [], 'eta_ns': []} for level in LEVELS}
+            retained = {}
+            if previous is not None:
+                retained = previous.get('results', {}).get(region, {}).get(method, {})
+            result['results'][region][method] = {
+                str(level): retained[str(level)] for level in LEVELS
+                if str(level) in retained}
+            missing = [level for level in LEVELS if str(level) not in retained]
+            if not missing:
+                print('reuse all predictive noise levels', region, method, flush=True)
+                continue
+            print('evaluate predictive noise levels', missing, region, method, flush=True)
+            seed_records = {level: {'accuracy': [], 'eta_ns': []} for level in missing}
             for seed in SEEDS:
                 weight = '0' if method == 'none' else '0p01'
                 run = (ROOT/'outputs/runs'/
@@ -92,22 +121,20 @@ def main():
                 means = torch.tensor(stats['means'], device=config.device).view(1,4,1,1,1)
                 stds = torch.tensor(stats['stds'], device=config.device).view(1,4,1,1,1)
                 dx = config.physics.box_length/config.physics.dns_grid_size
-                for level in LEVELS:
+                for level in missing:
                     repeated = [evaluate(model, decoder, physics, loaders['test'],
-                                         level, repetition, means, stds, dx)
+                                         level, repetition, means, stds, dx, seed)
                                 for repetition in range(REPETITIONS)]
                     seed_records[level]['accuracy'].append(
                         float(np.mean([value[0] for value in repeated])))
                     seed_records[level]['eta_ns'].append(
                         float(np.mean([value[1] for value in repeated])))
-            result['results'][region][method] = {}
-            for level in LEVELS:
+            for level in missing:
                 record = seed_records[level]
                 result['results'][region][method][str(level)] = {
                     key: {'values': values, 'mean': float(np.mean(values)),
                           'std': float(np.std(values, ddof=1))}
                     for key, values in record.items()}
-    output = ROOT/'outputs/aggregate/full_ns_noise.json'
     output.write_text(json.dumps(result, indent=2))
     print(json.dumps(result, indent=2))
 

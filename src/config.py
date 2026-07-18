@@ -62,6 +62,7 @@ class DecoderConfig:
     n_upsample_layers: int = 3          # 4→8→16→32
     use_compact_physics_decoder: bool = True
     use_temporal_decoder: bool = False
+    architecture: str = 'conv'
 
 
 @dataclass

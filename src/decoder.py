@@ -42,3 +42,27 @@ class TemporalPhysicsDecoder(nn.Module):
         value = self.out_conv(value)
         return value.view(value.shape[0], self.n_time, self.output_channels,
                           *value.shape[-3:])
+
+
+class LinearTemporalPhysicsDecoder(nn.Module):
+    """Direct linear latent-to-trajectory decoder used only as an ablation.
+
+    This deliberately contains no spatial convolution or nonlinear hidden
+    layer.  Its output contract matches :class:`TemporalPhysicsDecoder`, so
+    the physics loss and all downstream training code remain unchanged.
+    """
+
+    def __init__(self, latent_dim=128, n_time=9, output_channels=4,
+                 grid_size=16):
+        super().__init__()
+        self.n_time = int(n_time)
+        self.output_channels = int(output_channels)
+        self.grid_size = int(grid_size)
+        output_dim = (self.n_time * self.output_channels
+                      * self.grid_size ** 3)
+        self.projection = nn.Linear(latent_dim, output_dim)
+
+    def forward(self, z_t):
+        value = self.projection(z_t)
+        return value.view(z_t.shape[0], self.n_time, self.output_channels,
+                          self.grid_size, self.grid_size, self.grid_size)

@@ -1,6 +1,30 @@
 {
-  "schema_version": 1,
+  "schema_version": 3,
   "noise_definition": "Gaussian fraction of per-field DNS standard deviation",
+  "levels_in_field_standard_deviations": [
+    0.0,
+    0.001,
+    0.005,
+    0.01,
+    0.02,
+    0.05,
+    0.1,
+    0.5,
+    1.0
+  ],
+  "protocol": {
+    "time_window": 17,
+    "domain_size": 32,
+    "windows_per_trajectory": 1,
+    "domains_per_window": 4,
+    "bootstrap_repeats": 30,
+    "selection_eta": 0.01,
+    "max_coefficient_relative_error": 2.0,
+    "max_validation_eta": 0.25,
+    "max_test_eta": 0.25,
+    "min_bootstrap_support": 0.5,
+    "min_support_separation": 1.25
+  },
   "levels": {
     "0.0": {
       "terms": [
@@ -22,6 +46,123 @@
       "max_coefficient_relative_error": 0.000272073150382246,
       "validation_passed_under_noise_protocol": true,
       "failure_reasons": []
+    },
+    "0.001": {
+      "terms": [
+        "time_derivative",
+        "convection",
+        "pressure_gradient",
+        "velocity_laplacian"
+      ],
+      "coefficients": [
+        1.0,
+        1.0001427763729553,
+        1.0000509246935434,
+        -0.005047362030252555
+      ],
+      "discovery_eta": 0.001864685035196958,
+      "validation_eta": 0.0016900241577604243,
+      "test_eta": 0.002049978990664408,
+      "bootstrap_support_fraction": 1.0,
+      "max_coefficient_relative_error": 0.00947240605051105,
+      "validation_passed_under_noise_protocol": true,
+      "failure_reasons": []
+    },
+    "0.005": {
+      "terms": [
+        "time_derivative",
+        "convection",
+        "pressure_gradient",
+        "velocity_laplacian"
+      ],
+      "coefficients": [
+        1.0,
+        0.9996281440485553,
+        0.9991666663234862,
+        -0.0052315598583227785
+      ],
+      "discovery_eta": 0.009324919978035256,
+      "validation_eta": 0.008439806977678873,
+      "test_eta": 0.010245703221637517,
+      "bootstrap_support_fraction": 0.8,
+      "max_coefficient_relative_error": 0.04631197166455568,
+      "validation_passed_under_noise_protocol": true,
+      "failure_reasons": []
+    },
+    "0.01": {
+      "terms": [
+        "time_derivative",
+        "convection",
+        "pressure_gradient",
+        "velocity_laplacian",
+        "kinetic_energy_gradient"
+      ],
+      "coefficients": [
+        1.0,
+        0.9989570738268974,
+        0.9967674472201878,
+        -0.005437517301989147,
+        -0.001346831016057146
+      ],
+      "discovery_eta": 0.018620949472765984,
+      "validation_eta": 0.01678715184304014,
+      "test_eta": 0.020469598255273187,
+      "bootstrap_support_fraction": 0.9333333333333333,
+      "max_coefficient_relative_error": 0.08750346039782929,
+      "validation_passed_under_noise_protocol": false,
+      "failure_reasons": [
+        "selected support ['time_derivative', 'convection', 'pressure_gradient', 'velocity_laplacian', 'kinetic_energy_gradient'] is not the full NS support"
+      ]
+    },
+    "0.02": {
+      "terms": [
+        "time_derivative",
+        "convection",
+        "pressure_gradient",
+        "velocity_laplacian",
+        "kinetic_energy_gradient"
+      ],
+      "coefficients": [
+        1.0,
+        0.9976479721679022,
+        0.9932667978361817,
+        -0.005873670308002142,
+        -0.0026939504105090357
+      ],
+      "discovery_eta": 0.037295589317303576,
+      "validation_eta": 0.033506861051929245,
+      "test_eta": 0.04099110283739007,
+      "bootstrap_support_fraction": 0.9,
+      "max_coefficient_relative_error": 0.1747340616004284,
+      "validation_passed_under_noise_protocol": false,
+      "failure_reasons": [
+        "selected support ['time_derivative', 'convection', 'pressure_gradient', 'velocity_laplacian', 'kinetic_energy_gradient'] is not the full NS support"
+      ]
+    },
+    "0.05": {
+      "terms": [
+        "time_derivative",
+        "convection",
+        "pressure_gradient",
+        "velocity_laplacian",
+        "kinetic_energy_gradient"
+      ],
+      "coefficients": [
+        1.0,
+        0.9937539371279949,
+        0.9827836158399602,
+        -0.007181690756217748,
+        -0.006743311197955291
+      ],
+      "discovery_eta": 0.09343854671234195,
+      "validation_eta": 0.08312655673776824,
+      "test_eta": 0.1026093354442925,
+      "bootstrap_support_fraction": 0.6666666666666666,
+      "max_coefficient_relative_error": 0.43633815124354963,
+      "validation_passed_under_noise_protocol": false,
+      "failure_reasons": [
+        "selected support ['time_derivative', 'convection', 'pressure_gradient', 'velocity_laplacian', 'kinetic_energy_gradient'] is not the full NS support"
+      ]
     },
     "0.1": {
       "terms": [

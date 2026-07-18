@@ -18,12 +18,14 @@ sys.path.insert(0, str(ROOT))
 
 from src.config import PINoPropConfig
 from src.data.hit_dataset import create_hit_dataloaders
-from src.decoder import TemporalPhysicsDecoder
+from src.decoder import LinearTemporalPhysicsDecoder, TemporalPhysicsDecoder
 from src.noprop.model import NoPropModel
 from src.physics.temporal_ns_loss import TemporalNSPhysicsLoss
 from src.training.local_trainer import LocalNoPropTrainer, configure_torch
 from src.training.pretrain import (align_label_embeddings_to_encoder,
-                                   load_shared_components, pretrain_decoder,
+                                   load_shared_components,
+                                   load_shared_condition_components,
+                                   pretrain_decoder,
                                    pretrain_encoder, save_shared_components)
 
 
@@ -63,6 +65,8 @@ def main():
     parser.add_argument('--lambda-phys', type=float, default=0.01)
     parser.add_argument('--relation-set', choices=['ns', 'ns_pp', 'full'],
                         default='ns')
+    parser.add_argument('--decoder-architecture', choices=['conv', 'linear'],
+                        default='conv')
     parser.add_argument('--run-tag', default='')
     parser.add_argument('--batch-size', type=int, default=32)
     parser.add_argument('--device', default='cuda' if torch.cuda.is_available() else 'cpu')
@@ -83,6 +87,8 @@ def main():
     config.data.trajectory_disjoint = True
     config.noprop.normalize_condition = True
     config.decoder.use_temporal_decoder = True
+    config.decoder.architecture = args.decoder_architecture
+    config.decoder.use_conv = args.decoder_architecture == 'conv'
     config.physics.n_time = 9
     config.physics.beta = 4.0
     config.physics.n_test_functions = 8
@@ -118,22 +124,38 @@ def main():
             float(value) for value in training_artifact['equation']['coefficients'][1:4]]
 
     model = NoPropModel(config).to(config.device)
-    decoder = TemporalPhysicsDecoder(
-        config.decoder.latent_dim, config.decoder.base_channels,
-        config.physics.n_time, config.decoder.output_channels).to(config.device)
+    if args.decoder_architecture == 'linear':
+        decoder = LinearTemporalPhysicsDecoder(
+            config.decoder.latent_dim, config.physics.n_time,
+            config.decoder.output_channels,
+            config.physics.physics_grid_size).to(config.device)
+    else:
+        decoder = TemporalPhysicsDecoder(
+            config.decoder.latent_dim, config.decoder.base_channels,
+            config.physics.n_time, config.decoder.output_channels).to(config.device)
     physics = TemporalNSPhysicsLoss(config, training_artifact).to(config.device)
     shared_suffix = '_smoke' if args.smoke else ''
+    architecture_suffix = ('' if args.decoder_architecture == 'conv'
+                           else f'_{args.decoder_architecture}')
     shared_path = (Path('outputs/models') /
                    f'shared_full_ns_v4_{args.physics_source}_{args.region}_seed'
-                   f'{args.seed}{shared_suffix}.pt')
+                   f'{args.seed}{architecture_suffix}{shared_suffix}.pt')
     if shared_path.exists() and not args.rebuild_shared:
         load_shared_components(model, decoder, shared_path, config.device)
         print(f'Loaded shared components: {shared_path}')
     else:
-        pretrain_encoder(model, loaders['train'], config,
-                         epochs=config.training.classifier_epochs,
-                         val_loader=loaders['val'])
-        align_label_embeddings_to_encoder(model, loaders['train'], config)
+        reference_shared_path = (Path('outputs/models') /
+                                 f'shared_full_ns_v4_{args.physics_source}_'
+                                 f'{args.region}_seed{args.seed}{shared_suffix}.pt')
+        if args.decoder_architecture != 'conv' and reference_shared_path.exists():
+            load_shared_condition_components(
+                model, reference_shared_path, config.device)
+            print(f'Loaded matched condition components: {reference_shared_path}')
+        else:
+            pretrain_encoder(model, loaders['train'], config,
+                             epochs=config.training.classifier_epochs,
+                             val_loader=loaders['val'])
+            align_label_embeddings_to_encoder(model, loaders['train'], config)
         pretrain_decoder(model, decoder, loaders['train'], config)
         save_shared_components(model, decoder, shared_path)
         print(f'Saved shared components: {shared_path}')
@@ -166,6 +188,9 @@ def main():
         'model_revision': 'trainable-physics-condition-fusion',
         'physics_source': args.physics_source,
         'relation_set': args.relation_set,
+        'decoder_architecture': args.decoder_architecture,
+        'decoder_parameters': sum(parameter.numel()
+                                  for parameter in decoder.parameters()),
         'equation_path': args.equation_path,
         'equation': training_artifact['equation'] if args.physics_source != 'none' else None,
         'region': args.region,

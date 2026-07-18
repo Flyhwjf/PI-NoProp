@@ -223,3 +223,16 @@ def load_shared_components(model, decoder, path, device):
     model.condition_fusion.load_state_dict(checkpoint['condition_fusion'])
     model.label_embed.load_state_dict(checkpoint['label_embed'])
     decoder.load_state_dict(checkpoint['decoder'])
+
+
+def load_shared_condition_components(model, path, device):
+    """Reuse the exact condition pathway while changing decoder architecture."""
+    checkpoint = torch.load(path, map_location=device, weights_only=True)
+    required = {'encoder', 'physics_encoder', 'condition_fusion', 'label_embed'}
+    missing = sorted(required-checkpoint.keys())
+    if missing:
+        raise ValueError(f'Shared checkpoint {path} lacks condition state: {missing}')
+    model.encoder.load_state_dict(checkpoint['encoder'])
+    model.physics_encoder.load_state_dict(checkpoint['physics_encoder'])
+    model.condition_fusion.load_state_dict(checkpoint['condition_fusion'])
+    model.label_embed.load_state_dict(checkpoint['label_embed'])

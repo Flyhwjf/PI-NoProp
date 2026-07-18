@@ -24,6 +24,7 @@ from src.baselines.cnn import SimpleCNN
 from src.config import PINoPropConfig
 from src.data.hit_dataset import create_hit_dataloaders
 from src.decoder import TemporalPhysicsDecoder
+from src.baselines.noprop_reference import ReferenceNoProp3D, ContinuousNoProp3D
 from src.noprop.model import NoPropModel
 from src.physics.temporal_ns_loss import TemporalNSPhysicsLoss
 from src.training.local_trainer import configure_torch
@@ -98,6 +99,105 @@ def train_cnn(region, seed, loaders, config, epochs=40):
         'peak_memory_mb': (torch.cuda.max_memory_allocated()/1024**2
                            if device.type == 'cuda' else 0.0),
         'parameters': sum(p.numel() for p in model.parameters()),
+    }
+
+
+@torch.no_grad()
+def evaluate_reference_noprop(model, loader, device, seed):
+    devices = ([torch.cuda.current_device()] if device.type == 'cuda' else [])
+    with torch.random.fork_rng(devices=devices):
+        torch.manual_seed(seed+10_000)
+        if device.type == 'cuda': torch.cuda.manual_seed_all(seed+10_000)
+        model.eval(); correct = total = 0
+        for batch in loader:
+            fields = batch['field'].to(device, non_blocking=True)
+            labels = batch['label'].to(device, non_blocking=True)
+            correct += int((model(fields).argmax(-1) == labels).sum())
+            total += len(labels)
+    return 100*correct/max(total, 1)
+
+
+def train_reference_noprop(region, seed, loaders, config, steps_per_block=100):
+    seed_all(seed); device = torch.device(config.device)
+    model = ReferenceNoProp3D(
+        n_classes=config.data.n_classes, n_blocks=config.diffusion.T,
+        eta=config.diffusion.eta).to(device)
+    optimizers = [torch.optim.AdamW(
+        step.parameters(), lr=1e-3, weight_decay=1e-4)
+        for step in model.steps]
+    updates = torch.zeros(model.n_blocks, dtype=torch.long)
+    iterator = iter(loaders['train'])
+    if device.type == 'cuda': torch.cuda.reset_peak_memory_stats()
+    started = time.perf_counter(); model.train()
+    while int(updates.min()) < steps_per_block:
+        eligible = torch.where(updates < steps_per_block)[0]
+        block_index = int(eligible[torch.randint(len(eligible), ())])
+        try: batch = next(iterator)
+        except StopIteration:
+            iterator = iter(loaders['train']); batch = next(iterator)
+        fields = batch['field'].to(device, non_blocking=True)
+        labels = batch['label'].to(device, non_blocking=True)
+        optimizer = optimizers[block_index]
+        optimizer.zero_grad(set_to_none=True)
+        loss = model.local_loss(fields, labels, block_index)
+        loss.backward()
+        torch.nn.utils.clip_grad_norm_(model.steps[block_index].parameters(), 1.0)
+        optimizer.step(); updates[block_index] += 1
+    return {
+        'method': 'Reference NoProp (3-D)', 'region': region, 'seed': seed,
+        'accuracy': evaluate_reference_noprop(model, loaders['test'], device, seed),
+        'eta_ns': None, 'eta_div': None,
+        'train_seconds': time.perf_counter()-started,
+        'peak_memory_mb': (torch.cuda.max_memory_allocated()/1024**2
+                           if device.type == 'cuda' else 0.0),
+        'parameters': sum(parameter.numel() for parameter in model.parameters()),
+        'block_updates': updates.tolist(),
+        'protocol': 'one-hot targets; independent 3-D encoder and optimizer per block',
+    }
+
+
+@torch.no_grad()
+def evaluate_noprop_ct(model, loader, device, seed):
+    devices = ([torch.cuda.current_device()] if device.type == 'cuda' else [])
+    with torch.random.fork_rng(devices=devices):
+        torch.manual_seed(seed+10_000)
+        if device.type == 'cuda': torch.cuda.manual_seed_all(seed+10_000)
+        model.eval(); correct = total = 0
+        for batch in loader:
+            fields = batch['field'].to(device, non_blocking=True)
+            labels = batch['label'].to(device, non_blocking=True)
+            latent = model.integrate(fields, steps=10, adjoint=False)
+            correct += int((latent.argmax(-1) == labels).sum()); total += len(labels)
+    return 100*correct/max(total, 1)
+
+
+def train_noprop_ct(region, seed, loaders, config, updates=1000):
+    seed_all(seed); device = torch.device(config.device)
+    model = ContinuousNoProp3D(n_classes=config.data.n_classes).to(device)
+    optimizer = torch.optim.AdamW(model.parameters(), lr=1e-3, weight_decay=1e-4)
+    iterator = iter(loaders['train'])
+    if device.type == 'cuda': torch.cuda.reset_peak_memory_stats()
+    started = time.perf_counter(); model.train()
+    for _ in range(updates):
+        try: batch = next(iterator)
+        except StopIteration:
+            iterator = iter(loaders['train']); batch = next(iterator)
+        fields = batch['field'].to(device, non_blocking=True)
+        labels = batch['label'].to(device, non_blocking=True)
+        optimizer.zero_grad(set_to_none=True)
+        loss = model.flow_matching_loss(fields, labels)
+        loss.backward(); torch.nn.utils.clip_grad_norm_(model.parameters(), 1.0)
+        optimizer.step()
+    return {
+        'method': 'NoProp-CT (3-D conditional flow)', 'region': region, 'seed': seed,
+        'accuracy': evaluate_noprop_ct(model, loaders['test'], device, seed),
+        'eta_ns': None, 'eta_div': None,
+        'train_seconds': time.perf_counter()-started,
+        'peak_memory_mb': (torch.cuda.max_memory_allocated()/1024**2
+                           if device.type == 'cuda' else 0.0),
+        'parameters': sum(parameter.numel() for parameter in model.parameters()),
+        'updates': updates, 'ode_solver': 'fixed-step RK4, 10 steps',
+        'protocol': 'continuous-time conditional flow matching with one-hot endpoints',
     }
 
 
@@ -229,6 +329,10 @@ def main():
         loaders = create_hit_dataloaders(config)[region]
         for seed in SEEDS:
             for name, function in (
+                ('noprop_reference', lambda: train_reference_noprop(
+                    region, seed, loaders, config)),
+                ('noprop_ct', lambda: train_noprop_ct(
+                    region, seed, loaders, config)),
                 ('cnn_bp', lambda: train_cnn(region, seed, loaders, config)),
                 ('global_physics_bp', lambda: train_global_physics(
                     region, seed, loaders, config, artifact)),
@@ -243,7 +347,9 @@ def main():
                     path.write_text(json.dumps(record, indent=2))
                 all_records[region].setdefault(name, []).append(record)
 
-        for name, source in (('noprop_vanilla', 'none'), ('pi_noprop', 'discovered')):
+        for name, source in (('noprop_no_equation', 'none'),
+                             ('noprop_analytic_ns', 'analytic'),
+                             ('pi_noprop', 'discovered')):
             records = []
             weight = '0' if source == 'none' else '0p01'
             for seed in SEEDS:
@@ -251,18 +357,31 @@ def main():
                         f'full_ns_v4_{source}_{region}_lambda{weight}_seed{seed}'/
                         'metrics.json')
                 raw = json.loads(path.read_text())
+                checkpoint = torch.load(path.with_name('checkpoint.pt'),
+                                        map_location='cpu', weights_only=False)
+                checkpoint_config = checkpoint['config']
+                counted_model = NoPropModel(checkpoint_config)
+                counted_decoder = TemporalPhysicsDecoder(
+                    checkpoint_config.decoder.latent_dim,
+                    checkpoint_config.decoder.base_channels,
+                    checkpoint_config.physics.n_time,
+                    checkpoint_config.decoder.output_channels)
                 records.append({
                     'method': name, 'region': region, 'seed': seed,
                     'accuracy': raw['test']['accuracy'],
                     'eta_ns': raw['test']['eta_ns'], 'eta_div': raw['test']['eta_div'],
                     'train_seconds': raw['block_train_seconds'],
                     'peak_memory_mb': raw['peak_memory_mb'],
+                    'parameters': (sum(p.numel() for p in counted_model.parameters())
+                                   + sum(p.numel() for p in counted_decoder.parameters())),
                 })
             all_records[region][name] = records
 
-    aggregate = {'schema_version': 2, 'protocol': {'seeds': list(SEEDS),
+    aggregate = {'schema_version': 3, 'protocol': {'seeds': list(SEEDS),
                  'trajectory_disjoint': True,
                  'model_revision': 'trainable-physics-condition-fusion',
+                 'reference_noprop': 'one-hot, independent 3-D encoder per local block',
+                 'noprop_ct': 'continuous conditional flow matching; RK4 inference',
                  'unaffected_baselines': [
                      'cnn_bp', 'global_physics_bp', 'spider_rate_classifier']},
                  'results': {}}
@@ -271,7 +390,8 @@ def main():
         for name, records in methods.items():
             aggregate['results'][region][name] = {
                 key: summarize(records, key) for key in
-                ('accuracy', 'eta_ns', 'eta_div', 'train_seconds', 'peak_memory_mb')}
+                ('accuracy', 'eta_ns', 'eta_div', 'train_seconds',
+                 'peak_memory_mb', 'parameters')}
     output = ROOT/'outputs/aggregate/full_ns_baselines.json'
     output.write_text(json.dumps(aggregate, indent=2))
     print(json.dumps(aggregate, indent=2), flush=True)
