@@ -1,0 +1,1100 @@
+%%
+%% Copyright 2007-2025 Elsevier Ltd
+%%
+%% This file is part of the 'Elsarticle Bundle'.
+%% ---------------------------------------------
+%%
+%% It may be distributed under the conditions of the LaTeX Project Public
+%% License, either version 1.3 of this license or (at your option) any
+%% later version.  The latest version of this license is in
+%%    http://www.latex-project.org/lppl.txt
+%% and version 1.3 or later is part of all distributions of LaTeX
+%% version 1999/12/01 or later.
+%%
+%% The list of all files belonging to the 'Elsarticle Bundle' is
+%% given in the file `manifest.txt'.
+%%
+%% Template article for Elsevier's document class `elsarticle'
+%% with numbered style bibliographic references
+%% SP 2008/03/01
+%% $Id: elsarticle-template-num.tex 272 2025-01-09 17:36:26Z rishi $
+%%
+\documentclass[preprint,12pt]{elsarticle}
+
+%% Use the option review to obtain double line spacing
+%% \documentclass[authoryear,preprint,review,12pt]{elsarticle}
+
+%% Use the options 1p,twocolumn; 3p; 3p,twocolumn; 5p; or 5p,twocolumn
+%% for a journal layout:
+%% \documentclass[final,1p,times]{elsarticle}
+%% \documentclass[final,1p,times,twocolumn]{elsarticle}
+%% \documentclass[final,3p,times]{elsarticle}
+%% \documentclass[final,3p,times,twocolumn]{elsarticle}
+%% \documentclass[final,5p,times]{elsarticle}
+%% \documentclass[final,5p,times,twocolumn]{elsarticle}
+
+%% For including figures, graphicx.sty has been loaded in
+%% elsarticle.cls. If you prefer to use the old commands
+%% please give \usepackage{epsfig}
+\usepackage{amssymb}
+\usepackage{amsmath}
+\usepackage{amsthm}
+\usepackage{algorithm}
+\usepackage{algorithmic}
+\usepackage{booktabs}
+\usepackage{float}
+\usepackage{graphicx}
+\usepackage{pdfpages}
+\usepackage{multirow}
+\usepackage{url}
+% Revision markup for the paper-v1 review workflow. These commands do not
+% alter the manuscript until revised text is explicitly wrapped in \rev{...}.
+\usepackage{xcolor}
+\usepackage{soul}
+\sethlcolor{yellow!25}
+\newcommand{\rev}[1]{\hl{#1}}
+\newcommand{\revmath}[1]{\colorbox{yellow!25}{$#1$}}
+%\journal{Journal of Computational Physics}
+\usepackage[colorlinks=true,        % 使用彩色文字代替边框
+            linkcolor=blue,         % 内部链接颜色
+            citecolor=red,          % 引用颜色
+            urlcolor=magenta,       % URL 颜色
+            filecolor=cyan,         % 文件链接颜色
+            bookmarks=true,         % 生成书签
+            bookmarksopen=true,     % 展开书签
+            bookmarksnumbered=true, % 书签带编号
+            pdftitle={论文标题},     % PDF 标题
+            pdfauthor={作者姓名}]{hyperref}  % PDF 作者
+
+\begin{document}
+
+\begin{frontmatter}
+
+%% Title, authors and addresses
+
+%% use the tnoteref command within \title for footnotes;
+%% use the tnotetext command for theassociated footnote;
+%% use the fnref command within \author or \affiliation for footnotes;
+%% use the fntext command for theassociated footnote;
+%% use the corref command within \author for corresponding author footnotes;
+%% use the cortext command for theassociated footnote;
+%% use the ead command for the email address,
+%% and the form \ead[url] for the home page:
+%% \title{Title\tnoteref{label1}}
+%% \tnotetext[label1]{}
+%% \author{Name\corref{cor1}\fnref{label2}}
+%% \ead{email address}
+%% \ead[url]{home page}
+%% \fntext[label2]{}
+%% \cortext[cor1]{}
+%% \affiliation{organization={},
+%%             addressline={},
+%%             city={},
+%%             postcode={},
+%%             state={},
+%%             country={}}
+%% \fntext[label3]{}
+
+% \title{SGN: A symbolic graph neural network for robust PDE discovery from noisy and sparse data}
+\title{Physics-Informed NoProp: Integrating Discovered Physical Laws into Localized Diffusion-Based Learning}
+
+% use optional labels to link authors explicitly to addresses:
+% \author[label1,label2]{}
+% \affiliation[label1]{organization={},
+%             addressline={},
+%             city={},
+%             postcode={},
+%             state={},
+%             country={}}
+%
+% \affiliation[label2]{organization={},
+%             addressline={},
+%             city={},
+%             postcode={},
+%             state={},
+%             country={}}
+
+ %% Author name
+\author[inst1]{Jianfeng Wu}
+\author[inst2,inst3]{Jun Guo*}
+\author[inst1]{San Zhang}
+\author[inst1]{X X}
+%% Author affiliation
+
+\affiliation[inst1]{organization={College of XX, Chengdu University of Information Technology},
+            city={Chengdu},
+            postcode={610225},
+            % state={Sichuan},
+            country={China}}
+            
+\affiliation[inst2]{organization={College of Applied Mathematics, Chengdu University of Information Technology},
+            city={Chengdu},
+            postcode={610225},
+            % state={Sichuan},
+            country={China}}
+
+\affiliation[inst3]{Key Laboratory of Mathematical Meteorology, Chengdu University of Information Technology,
+            city={Chengdu},
+            postcode={610225},
+            % state={Sichuan},
+            country={China}}
+% \affiliation[inst1]{organization={School of Software Engineering, Chengdu University of Information Technology},
+%             % addressline={No. 24, Section 1, Xuefu Road, Southwest Airport Economic Development Zone},
+%             city={Chengdu},
+%             postcode={610225},
+%             % state={Sichuan},
+%             country={China}}
+% \affiliation[inst2]{organization={School of Sciences, Southwest Petroleum University},
+% city={Chengdu},
+% postcode={610500},
+% state={Sichuan},
+% country={China}}
+
+% \affiliation[inst2]{organization={School of Statistics, Chengdu University of Information Technology},
+%             % addressline={No. 24, Section 1, Xuefu Road, Southwest Airport Economic Development Zone},
+%             city={Chengdu},
+%             postcode={610103},
+%             % state={Sichuan},
+%             country={China}}
+
+
+
+
+\begin{abstract}
+Neural network training via back-propagation requires global gradient propagation across all layers, which imposes memory overhead, limits parallelism, and hinders biological plausibility. The recently proposed NoProp (No Propagation) framework circumvents these issues by decomposing the network into independently trained blocks, each learning to denoise a noisy target through a local diffusion process. While computationally attractive, NoProp lacks an explicit mechanism to incorporate prior physical knowledge about the system generating the data. \rev{In this paper, we propose a physics-informed NoProp framework that integrates a governing equation discovered by SPIDER (Sparse Physics-Informed Discovery of Empirical Relations) into blockwise learning. The framework combines the diffusion-based local learning paradigm of NoProp with weak-form sparse regression: the validated equation coefficients enter the model through a learned first-frame physical condition and local temporal-field constraints. We evaluate the framework using 15 independent }\revmath{64^3}\rev{ trajectories of unforced decaying homogeneous isotropic turbulence, with trajectory-disjoint discovery, validation, and test splits. SPIDER recovers the complete momentum equation with a maximum coefficient error of }\revmath{0.368\%}\rev{ and an independent test residual of }\revmath{9.70\times10^{-4}}\rev{. In three-seed experiments, physics-informed NoProp achieves }\revmath{86.73\%}\rev{ and }\revmath{82.94\%}\rev{ mean accuracy in the low- and high-enstrophy groups, compared with }\revmath{17.59\%}\rev{ and }\revmath{17.46\%}\rev{ for vanilla NoProp, while reducing the corresponding full Navier--Stokes residuals by }\revmath{24.8\%}\rev{ and }\revmath{63.5\%}\rev{.}
+% physics-informed NoProp not only achieves competitive accuracy in downstream tasks but also significantly improves robustness to noise (up to 
+% 100
+% %
+% 100%) and data sparsity. Compared with standard NoProp, the proposed method yields latent representations that better satisfy the underlying physical laws, bridging the gap between efficient local learning and data-driven scientific discovery.
+\rev{The code is available at }\colorbox{yellow!25}{\url{https://github.com/Flyhwjf/PI-NoProp}}
+\end{abstract}
+
+
+%% Keywords
+\begin{keyword}
+%% keywords here, in the form: keyword \sep keyword
+Physics-informed learning\sep  Weak formulation\sep  Sparse regression\sep Turbulent flow \sep  Diffusion models
+\end{keyword}
+
+\end{frontmatter}
+
+%% main text
+%%
+% \clearpage % 强制换页，并输出所有未排版的图表
+%% Use \section commands to start a section
+
+\section{Introduction}
+
+Deep neural networks have achieved remarkable successes across a wide range of scientific and industrial domains, largely driven by the effectiveness of back-propagation (BP) for training multi-layer architectures \cite{rumelhart1986learning}. BP iteratively adjusts network parameters by propagating an error signal from the output back through all layers, enabling end-to-end optimization of complex models. Despite its empirical success, BP suffers from several fundamental limitations. First, it is biologically implausible, as it requires symmetric forward and backward passes that do not align with local synaptic plasticity observed in the brain \cite{grossberg1987competitive,lillicrap2016random}. Second, BP necessitates storing intermediate activations during the forward pass, imposing significant memory overhead that hampers scalability \cite{rumelhart1986learning}. Third, the sequential nature of gradient propagation creates strong dependencies across layers, limiting parallelization and impeding efficient distributed training \cite{carreira2014distributed}. These drawbacks have motivated a sustained interest in developing alternative learning paradigms that do not rely on global error propagation \cite{hinton2006fast,lee2015difference,nokland2016direct,jaderberg2017decoupled,hinton2022forward}.
+
+Among these alternatives, \textbf{NoProp} (No Propagation) \cite{li2025noprop} has recently emerged as a promising framework that completely avoids forward and backward propagation across network blocks. Inspired by diffusion models \cite{sohl2015deep,ho2020denoising,song2021maximum}, NoProp decomposes a neural network into independently trained blocks. During training, each block receives the input $x$ and a noisy version of the target label embedding, and learns to denoise it using only local back-propagation within the block. At inference, Gaussian noise is progressively transformed through the blocks into a clean representation that is fed to a final classifier. By eliminating global gradient flow, NoProp enables blockwise parallel training, reduces memory footprint, and offers greater biological plausibility. Empirical results on MNIST, CIFAR-10, and CIFAR-100 demonstrate that NoProp achieves performance competitive with standard back-propagation on the same architectures \cite{li2025noprop}.
+
+However, NoProp, like most purely data-driven deep learning methods, does not explicitly incorporate any prior knowledge about the physical processes that generated the data. In many scientific applications -- such as fluid dynamics, climate modeling, or materials science -- the observed data are governed by fundamental physical laws expressed as partial differential equations (PDEs). Ignoring this structure can lead to models that, while accurate on training data, produce predictions that violate physical constraints, especially under distribution shift or in the presence of noise \cite{raissi2019physics}. This limitation is particularly acute when data are sparse or corrupted, a common scenario in experimental measurements.
+
+Concurrently, a separate line of research has focused on \textbf{data-driven discovery of governing equations} from observational data. Starting with sparse regression methods like SINDy \cite{brunton2016discovering} for ordinary differential equations, numerous approaches have been developed to identify PDEs from spatiotemporal data \cite{rudy2017data,schaeffer2017learning,raissi2018hidden,gurevich2019robust,reinbold2020using,messenger2021weak,kaheman2020sindy}. A particularly robust framework is \textbf{SPIDER} (Sparse Physics-Informed Discovery of Empirical Relations) \cite{gurevich2024learning}, which combines three key ingredients: (i) physical constraints of smoothness, locality, and symmetry to construct compact libraries of candidate terms; (ii) a weak formulation of PDEs that shifts derivatives onto test functions, drastically reducing sensitivity to noise; and (iii) sparse regression based on singular value decomposition to extract parsimonious relations. SPIDER has been successfully applied to highly turbulent channel flow data, recovering not only the Navier--Stokes and continuity equations but also the pressure-Poisson equation, energy equation, and boundary conditions, even under extreme noise levels \cite{gurevich2024learning}.
+
+Despite the power of SPIDER for equation discovery, it remains a post-hoc analysis tool that does not directly inform the training of neural networks used for downstream tasks such as prediction or classification. Conversely, NoProp offers an efficient learning engine but lacks a mechanism to enforce physical consistency. Bridging these two paradigms could yield models that are both computationally efficient and physically faithful, a goal that aligns with the emerging field of \textbf{physics-informed machine learning}\cite{raissi2019physics,karniadakis2021physics,willard2020integrating,karpatne2017theory}.
+
+In this paper, we propose \textbf{physics-informed NoProp}, a novel framework that seamlessly integrates the governing equations discovered by SPIDER into the blockwise training objective of NoProp. Our approach proceeds in two stages. First, we apply SPIDER to the available observational data to extract a sparse set of PDEs that describe the underlying physics -- for example, the incompressible Navier--Stokes equations for a fluid flow. These equations are obtained in weak form using symmetry-adapted libraries and yield explicit expressions with interpretable coefficients. Second, we embed the residual of the discovered PDE as a soft constraint into the local loss function of each NoProp block. Specifically, let $z_t$ denote the latent variable at block $t$, from which we can reconstruct physically meaningful fields (e.g., velocity $\tilde{\mathbf{u}}$ and pressure $\tilde{p}$) via a learnable decoder. The physics-informed loss for block $t$ augments the standard NoProp denoising objective with a term proportional to the squared norm of the PDE residual evaluated on these reconstructed fields. This encourages the network to produce latent representations that not only facilitate accurate classification but also adhere to the physical laws governing the system.
+
+\rev{We validate the proposed method on an independently generated dataset of unforced decaying homogeneous isotropic turbulence, comprising 15 trajectory-disjoint direct numerical simulations on }$64^3$\rev{ periodic grids.} \rev{Our experiments demonstrate that physics-informed NoProp substantially improves future energy-decay classification over vanilla NoProp while producing latent reconstructions with lower Navier--Stokes residuals.} \rev{Under controlled observation noise, predictive performance remains stable at a noise level of 0.1 channel standard deviations, but degrades at higher noise levels.} \rev{Ablation studies further evaluate the effects of the discovered momentum equation and the algebraically derived pressure--Poisson and kinetic-energy relations on predictive accuracy and physical consistency.}
+
+The main contributions of this work are threefold:
+\begin{itemize}
+    \item We introduce a principled framework that combines the efficiency of NoProp's blockwise diffusion-based learning with the interpretability of SPIDER's data-driven equation discovery.
+    \item We design a physics-informed loss that incorporates the weak-form residual of discovered PDEs into local training objectives, enabling end-to-end learning with physical constraints without global gradient propagation.
+    \item We provide extensive empirical evidence on a challenging turbulent flow dataset, showing that the proposed method yields physically consistent representations, improved noise robustness, and competitive predictive performance.
+\end{itemize}
+
+The remainder of this paper is organized as follows. Section~\ref{sec:related} reviews the necessary background on NoProp and SPIDER. Section~\ref{sec:methodology} details the proposed physics-informed NoProp framework. Section~\ref{sec:experiments} presents experimental setup, results, and discussion. Section~\ref{sec:conclusion} concludes the paper and outlines future research directions.
+
+
+\section{Related Work}
+\label{sec:related}
+
+This section reviews the literature most germane to the proposed physics-informed NoProp framework. We first discuss alternative learning paradigms that avoid global back-propagation, with a focus on the NoProp algorithm. Next, we survey data-driven methods for discovering partial differential equations (PDEs) from observations, emphasizing the SPIDER methodology. We then briefly cover physics-informed machine learning and diffusion-based generative models, which provide the theoretical underpinnings for our approach. Finally, we position our contribution in relation to these lines of work.
+
+\subsection{Local Learning and Alternatives to Back-Propagation}
+\label{sec:local-learning}
+
+The canonical training algorithm for deep neural networks, back-propagation (BP) \cite{rumelhart1986learning}, relies on a global error signal that is propagated backwards through all layers. While highly effective, BP has several well-documented shortcomings: it is biologically implausible because it requires symmetric forward and backward passes \cite{grossberg1987competitive,lillicrap2016random}, it incurs a large memory footprint due to the need to store intermediate activations \cite{rumelhart1986learning}, and its sequential nature hinders parallelization \cite{carreira2014distributed}.
+
+To overcome these limitations, a variety of \textbf{local learning} schemes have been proposed. Early examples include deep belief networks trained layer-wise with contrastive divergence \cite{hinton2006fast}. More recent methods include feedback alignment \cite{lillicrap2016random} and direct feedback alignment \cite{nokland2016direct}, which replace the symmetric weights of BP with fixed random matrices, yet still require a global error signal. Synthetic gradients \cite{jaderberg2017decoupled} train auxiliary networks to approximate the gradient at each layer, allowing some decoupling. The forward-forward algorithm \cite{hinton2022forward} trains each layer by contrasting the responses to positive and negative examples using a local objective.
+
+Among these, \textbf{NoProp} (No Propagation) \cite{li2025noprop} stands out as a method that completely eliminates both forward and backward propagation across blocks. NoProp treats a neural network as a sequence of $T$ blocks, each performing a denoising step inspired by diffusion models \cite{sohl2015deep,ho2020denoising,song2021maximum}. Formally, let $x$ be an input and $y$ its label, with associated embedding $u_y \in \mathbb{R}^d$ (either fixed one-hot or learnable). NoProp defines a forward (inference) process:
+\begin{equation}
+\label{eq:noprop-forward}
+z_0 \sim \mathcal{N}(0,I),\qquad 
+z_t = a_t\,\hat{u}_{\theta_t}(z_{t-1},x) + b_t z_{t-1} + \sqrt{c_t}\,\epsilon_t,\quad \epsilon_t\sim\mathcal{N}(0,I),
+\end{equation}
+for $t=1,\dots,T$, where $\hat{u}_{\theta_t}$ is a neural network block and $a_t,b_t,c_t$ are scalars derived from a noise schedule. The training objective for block $t$ is derived from a variational lower bound on the conditional log-likelihood $\log p(y|x)$:
+\begin{equation}
+\label{eq:noprop-loss}
+\mathcal{L}_{\text{NoProp}}^{(t)} = \frac{T}{2}\,\eta\,\mathbb{E}\bigl[(\mathrm{SNR}(t)-\mathrm{SNR}(t-1))\|\hat{u}_{\theta_t}(z_{t-1},x)-u_y\|^2\bigr],
+\end{equation}
+where $\mathrm{SNR}(t)=\bar\alpha_t/(1-\bar\alpha_t)$ is the signal-to-noise ratio, $\eta$ a hyperparameter, and the expectation is taken over the variational posterior. A final classifier $\hat{p}_{\theta_{\text{out}}}(y|z_T)$ is trained with cross-entropy. Crucially, each block can be updated independently using only local back-propagation, enabling massive parallelism and reducing memory consumption.
+
+Despite its computational advantages, NoProp does not incorporate any prior knowledge about the physical laws that may govern the data. In scientific applications, such knowledge can be critical for generalization and robustness.
+
+\subsection{Data-Driven Discovery of Governing Equations}
+\label{sec:equation-discovery}
+
+A parallel line of research aims to extract symbolic equations -- particularly PDEs -- directly from observational data. The \textbf{sparse identification of nonlinear dynamics} (SINDy) framework \cite{brunton2016discovering} pioneered this approach for ordinary differential equations by posing a sparse linear regression problem over a library of candidate functions. For PDEs, several extensions have been developed \cite{rudy2017data,schaeffer2017learning,raissi2018hidden,gurevich2019robust,reinbold2020using,messenger2021weak,kaheman2020sindy}, but they often suffer from high sensitivity to noise because they operate on the \textbf{strong form} of the equations, which requires numerical differentiation of noisy data.
+
+To mitigate noise sensitivity, \textbf{weak-form} formulations have been introduced \cite{gurevich2019robust,reinbold2020using,messenger2021weak}. The key idea is to multiply the PDE by a smooth test function $w$ and integrate over a spatio-temporal domain $\Omega$, shifting derivatives onto $w$ via integration by parts. For a candidate relation of the form $\sum_n c_n f_n = 0$, this yields a linear system:
+\begin{equation}
+\label{eq:weak-form}
+\sum_n c_n \int_\Omega w\,f_n \,d\Omega = 0,
+\end{equation}
+where the integrals can be approximated numerically without ever differentiating the data. This weak formulation dramatically improves robustness, enabling accurate identification even with noise levels exceeding $100\%$ \cite{gurevich2024learning}.
+
+The \textbf{SPIDER} (Sparse Physics-Informed Discovery of Empirical Relations) framework \cite{gurevich2024learning} synthesises these ideas into a comprehensive methodology. SPIDER incorporates three key ingredients:
+
+\begin{enumerate}
+    \item \textbf{Symmetry-constrained library construction.} Libraries of candidate terms are built by considering irreducible representations of the symmetry group of the system (e.g., $O(3)$ for three-dimensional isotropic fluids). This yields compact libraries that respect rotational and reflectional symmetries, reducing the search space and improving interpretability. For example, for a fluid described by velocity $\mathbf{u}$ and pressure $p$, the scalar library up to third order is:
+    \begin{equation}
+    \label{eq:scalar-library}
+    \mathcal{L}_0^{(3)} = \{1,\,p,\,\nabla\cdot\mathbf{u},\,\partial_t p,\,p^2,\,u^2,\,p^3,\,\mathbf{u}\cdot\nabla p,\,\nabla^2 p,\,p\partial_t p,\,\partial_t^2 p,\,p\nabla\cdot\mathbf{u},\,u^2 p,\,\mathbf{u}\cdot\partial_t\mathbf{u}\},
+    \end{equation}
+    and the vector library is:
+    \begin{equation}
+    \label{eq:vector-library}
+    \mathcal{L}_1^{(3)} = \{\mathbf{u},\,\partial_t\mathbf{u},\,\nabla p,\,p\mathbf{u},\,(\mathbf{u}\cdot\nabla)\mathbf{u},\,\nabla^2\mathbf{u},\,\partial_t^2\mathbf{u},\,u^2\mathbf{u},\,p^2\mathbf{u},\,\partial_t\nabla p,\,p\nabla p,\,\mathbf{u}(\nabla\cdot\mathbf{u}),\,(\nabla\mathbf{u})\cdot\mathbf{u},\,\nabla(\nabla\cdot\mathbf{u}),\,p\partial_t\mathbf{u},\,u\partial_t p\}.
+    \end{equation}
+    
+    \item \textbf{Weak formulation and feature matrix construction.} For each term $f_n$ in the library, its weak-form integral over many domains $\Omega_i$ (with different test functions $w_i$) is computed, forming a feature matrix $\mathbf{Q}$ with entries
+    \begin{equation}
+    \label{eq:feature-matrix}
+    Q_{in} = \frac{1}{V_i S_n}\int_{\Omega_i} w_i(\mathbf{x},t)\,f_n(\mathbf{x},t)\,d\Omega,
+    \end{equation}
+    where $V_i$ is a normalisation factor and $S_n$ is a scale that non-dimensionalises the term.
+    
+    \item \textbf{Sparse regression via singular value decomposition.} Relations of the form $\mathbf{c}\cdot\mathbf{f}=0$ correspond to vectors $\mathbf{c}$ in the nullspace of $\mathbf{Q}$. SPIDER identifies parsimonious relations by examining the right singular vectors associated with the smallest singular values of $\mathbf{Q}$. A greedy algorithm then prunes terms to produce a sequence of increasingly sparse candidate equations, from which the most appropriate is selected based on a residual threshold.
+\end{enumerate}
+
+Applied to the Johns Hopkins turbulence database \cite{li2008public}, SPIDER successfully recovered the incompressible Navier--Stokes equations, the continuity equation, the pressure-Poisson equation, the energy equation, and the no-slip boundary conditions, even under extreme noise \cite{gurevich2024learning}.
+
+\subsection{Physics-Informed Machine Learning}
+\label{sec:piml}
+
+The integration of physical knowledge into neural network training has gained substantial traction under the banner of \textbf{physics-informed neural networks (PINNs)} \cite{raissi2019physics,karniadakis2021physics}. PINNs embed the residual of a known PDE into the loss function, enabling the network to approximate solutions while respecting the governing physics. For a PDE $\mathcal{R}[\mathbf{u}]=0$, the loss is typically
+\begin{equation}
+\label{eq:pinn-loss}
+\mathcal{L}_{\text{PINN}} = \mathcal{L}_{\text{data}} + \lambda \|\mathcal{R}[\hat{\mathbf{u}}]\|^2,
+\end{equation}
+where $\hat{\mathbf{u}}$ is the network output. This paradigm has been extended to inverse problems, parameter estimation, and discovery of unknown terms \cite{willard2020integrating,karpatne2017theory}. However, PINNs assume the form of the PDE is known \textit{a priori} -- an assumption that limits their applicability in purely data-driven discovery scenarios.
+
+\subsection{Diffusion Models and Flow Matching}
+\label{sec:diffusion}
+
+NoProp is deeply rooted in the theory of \textbf{denoising diffusion probabilistic models (DDPMs)} \cite{sohl2015deep,ho2020denoising,song2021maximum}. In DDPMs, a forward process gradually adds noise to data, and a neural network learns to reverse it. The training objective is a weighted sum of denoising score matching losses. The continuous-time limit leads to score-based generative models described by stochastic differential equations (SDEs) and probability flow ODEs \cite{song2021maximum}. \textbf{Flow matching} \cite{lipman2022flow,tong2023improving} provides an alternative simulation-free training objective for continuous normalising flows, directly regressing a vector field that transports a prior to the data distribution. Both diffusion and flow matching have been adapted for supervised learning tasks such as classification and regression \cite{han2022card,kim2025simulation,hu2024flow}, demonstrating their versatility.
+
+NoProp adapts these ideas to a discriminative setting by treating the label embedding as the target distribution. The forward (noising) process is fixed, and each block learns a conditional denoising step. The resulting framework is highly modular and parallelisable.
+
+\subsection{Positioning of This Work}
+\label{sec:positioning}
+
+The preceding discussion highlights a clear gap: NoProp provides an efficient local learning mechanism but lacks physical awareness, while SPIDER excels at discovering interpretable PDEs from data but is a post-hoc tool. The emerging field of physics-informed machine learning has shown the benefits of embedding physical constraints into neural networks, yet it typically assumes the governing equations are known. \textbf{Physics-informed NoProp} bridges these worlds: it uses SPIDER to discover the underlying PDEs directly from the available data, then incorporates their weak-form residuals as local regularisers in the NoProp training objective. This synergy yields a model that is both computationally efficient (via blockwise parallelism) and physically consistent (via the discovered equations). To the best of our knowledge, this is the first attempt to combine blockwise diffusion-based learning with automated equation discovery in a unified framework.
+
+\section{Methodology}
+\label{sec:methodology}
+
+We present the proposed physics-informed NoProp framework, which integrates SPIDER-discovered partial differential equations (PDEs) into the blockwise training of NoProp. Section~\ref{sec:noprop-recall} briefly recalls the NoProp algorithm \cite{li2025noprop} and establishes notation. Section~\ref{sec:spider-summary} summarises the SPIDER methodology \cite{gurevich2024learning} for extracting interpretable PDEs from data. Section~\ref{sec:physics-noprop} describes the core contribution: how to incorporate the discovered PDEs as differentiable regularisers into each NoProp block using a weak formulation. Section~\ref{sec:implementation} discusses implementation details.
+
+\subsection{NoProp: Blockwise Diffusion-Based Learning}
+\label{sec:noprop-recall}
+
+Let $x\in\mathcal{X}$ be an input (e.g., an image) and $y\in\{1,\dots,m\}$ its associated label. An embedding $u_y\in\mathbb{R}^d$ of the label is defined, either as a fixed one-hot vector or as a row of a learnable embedding matrix $W_{\text{Embed}}\in\mathbb{R}^{m\times d}$. NoProp \cite{li2025noprop} decomposes a neural network into $T$ sequential blocks. During \textbf{inference}, a latent variable $z_0$ is drawn from a standard Gaussian prior $p(z_0)=\mathcal{N}(z_0;0,I)$. For each block $t=1,\dots,T$, the latent is updated by a residual diffusion step:
+\begin{equation}
+\label{eq:inference-step}
+z_t = a_t\,\hat{u}_{\theta_t}(z_{t-1},x) + b_t z_{t-1} + \sqrt{c_t}\,\epsilon_t,\quad \epsilon_t\sim\mathcal{N}(0,I),
+\end{equation}
+where $\hat{u}_{\theta_t}:\mathbb{R}^d\times\mathcal{X}\to\mathbb{R}^d$ is a neural network parameterised by $\theta_t$, and $a_t,b_t,c_t$ are scalar coefficients determined by a fixed noise schedule (e.g., cosine schedule). The final latent $z_T$ is fed into a classifier $\hat{p}_{\theta_{\text{out}}}(y|z_T)$, typically a linear layer followed by softmax.
+
+\textbf{Training objective.} NoProp is trained by maximising a variational lower bound on the conditional log-likelihood $\log p(y|x)$. A forward noising process $q(z_t|y)$ is defined as an Ornstein-Uhlenbeck process that gradually adds noise to the label embedding $u_y$:
+\begin{equation}
+\label{eq:noising-process}
+q(z_t|y) = \mathcal{N}\bigl(z_t;\,\sqrt{\bar\alpha_t}\,u_y,\;1-\bar\alpha_t\bigr),
+\end{equation}
+where $\bar\alpha_t=\prod_{s=t}^T\alpha_s$ and $\alpha_s$ are related to the noise schedule. Using the reparameterisation trick, one can sample $z_{t-1}\sim q(z_{t-1}|y)$ directly. The evidence lower bound (ELBO) simplifies to a sum of per-block denoising score matching losses \cite{li2025noprop,song2021maximum}. For block $t$, the loss is:
+\begin{equation}
+\label{eq:diffusion-loss}
+\mathcal{L}_{\text{diff}}^{(t)} = \frac{T}{2}\,\eta\,\mathbb{E}_{q(z_{t-1}|y)}\Bigl[ \bigl(\mathrm{SNR}(t)-\mathrm{SNR}(t-1)\bigr)\,\bigl\|\hat{u}_{\theta_t}(z_{t-1},x)-u_y\bigr\|^2 \Bigr],
+\end{equation}
+where $\mathrm{SNR}(t)=\bar\alpha_t/(1-\bar\alpha_t)$ is the signal-to-noise ratio and $\eta$ is a hyperparameter. The classifier is trained with cross-entropy:
+\begin{equation}
+\label{eq:classification-loss}
+\mathcal{L}_{\text{cls}} = -\mathbb{E}_{q(z_T|y)}\bigl[\log\hat{p}_{\theta_{\text{out}}}(y|z_T)\bigr].
+\end{equation}
+The total NoProp loss (per sample) is $\mathcal{L}_{\text{cls}} + \sum_{t=1}^T\mathcal{L}_{\text{diff}}^{(t)}$ plus an often-neglected KL term $D_{\text{KL}}(q(z_0|y)\|p(z_0))$ \cite{li2025noprop}.
+
+\subsection{SPIDER: Discovering PDEs from Data}
+\label{sec:spider-summary}
+
+SPIDER \cite{gurevich2024learning} is a data-driven method for discovering interpretable PDEs from possibly noisy observations of spatiotemporal fields. Consider a physical system described by fields $\mathbf{u}(\mathbf{x},t)$ (e.g., velocity) and $p(\mathbf{x},t)$ (pressure). The method assumes that the governing equations can be written as linear combinations of candidate terms $f_n$ -- products of the fields and their partial derivatives -- respecting the symmetries of the system. The goal is to find a sparse coefficient vector $\mathbf{c}=[c_1,\dots,c_N]^\top$ such that
+\begin{equation}
+\label{eq:pde-candidate}
+\sum_{n=1}^N c_n f_n(\mathbf{u},p,\partial_t\mathbf{u},\nabla\mathbf{u},\nabla p,\dots)=0.
+\end{equation}
+
+To avoid numerical differentiation of noisy data, SPIDER employs a \textbf{weak formulation}. Let $\Omega_i$ be a spatiotemporal domain and $w_i(\mathbf{x},t)$ a smooth test function with compact support. Integrating \eqref{eq:pde-candidate} against $w_i$ and integrating by parts where possible yields:
+\begin{equation}
+\label{eq:weak-formulation}
+\sum_{n=1}^N c_n \int_{\Omega_i} w_i(\mathbf{x},t)\,\tilde{f}_n(\mathbf{u},p,\dots)\,d\Omega = 0,
+\end{equation}
+where $\tilde{f}_n$ denotes the term after transferring derivatives onto $w_i$ (if integration by parts is applicable) or the original term otherwise. Repeating this for many domains $i=1,\dots,M$ and different test functions gives a linear system $\mathbf{Q}\mathbf{c}=\mathbf{0}$, with $\mathbf{Q}\in\mathbb{R}^{M\times N}$ having entries
+\begin{equation}
+\label{eq:feature-matrix-spider}
+Q_{in} = \frac{1}{V_i S_n}\int_{\Omega_i} w_i(\mathbf{x},t)\,\tilde{f}_n(\mathbf{u},p,\dots)\,d\Omega,
+\end{equation}
+where $V_i=\int_{\Omega_i}|w_i|\,d\Omega$ is a normalisation factor and $S_n$ is a scale that non-dimensionalises term $n$ (estimated from characteristic scales of the data). The system is solved for $\mathbf{c}$ with $\|\mathbf{c}\|=1$ by taking the right singular vector corresponding to the smallest singular value of $\mathbf{Q}$.
+
+Sparse, parsimonious relations are obtained via a greedy algorithm that iteratively removes terms and tracks the residual $\|\mathbf{Q}^{(N)}\mathbf{c}^{(N)}\|$. The final selection balances accuracy and sparsity using a threshold on the relative increase in residual. Applied to the Johns Hopkins turbulence database \cite{li2008public}, SPIDER successfully recovers the incompressible Navier--Stokes equations, the continuity equation, the pressure-Poisson equation, and the energy equation, even under extreme noise \cite{gurevich2024learning}.
+
+\subsection{Physics-Informed NoProp}
+\label{sec:physics-noprop}
+
+We now describe the integration of SPIDER-discovered PDEs into the NoProp training framework. The core idea is to augment the per-block denoising objective with a physics-based regularisation term that penalises deviations of the latent dynamics from the known physical laws. This requires: (i) discovering the governing equations using SPIDER; (ii) reconstructing physical fields from the latent variables; (iii) defining a differentiable physics loss based on the weak residual of the discovered PDEs.
+
+\subsubsection{Discovering Governing Equations with SPIDER}
+\label{sec:discovering-equations}
+
+Given a dataset $\mathcal{D}=\{(x_i,y_i)\}_{i=1}^N$ where each $x_i$ is associated with a high-dimensional spatiotemporal field (e.g., a snapshot of a fluid flow), we first apply SPIDER to the fields to extract the underlying PDEs. Following the procedure in \cite{gurevich2024learning}, we construct symmetry-adapted libraries $\mathcal{L}_0$ (scalar relations) and $\mathcal{L}_1$ (vector relations) up to a chosen order (e.g., third order). Using a set of integration domains $\Omega_i$ and test functions $w_i$, we form feature matrices $\mathbf{Q}_0$ and $\mathbf{Q}_1$ as in \eqref{eq:feature-matrix-spider} and perform sparse regression. This yields explicit equations. For an incompressible fluid, for example, we obtain the Navier-Stokes momentum equation and the continuity equation:
+\begin{equation}
+\label{eq:navier-stokes}
+\mathcal{R}_{\text{NS}}(\mathbf{u},p) := \partial_t\mathbf{u} + (\mathbf{u}\cdot\nabla)\mathbf{u} + \nabla p - \nu\nabla^2\mathbf{u} = 0,
+\end{equation}
+\begin{equation}
+\label{eq:continuity}
+\mathcal{R}_{\text{cont}}(\mathbf{u}) := \nabla\cdot\mathbf{u} = 0,
+\end{equation}
+where the viscosity $\nu$ and the coefficients of the other terms are determined from the regression. These equations are assumed to hold for all samples in the dataset.
+
+\subsubsection{Reconstructing Physical Fields from Latent Variables}
+\label{sec:reconstructing-fields}
+
+In NoProp, the latent variables $z_t$ reside in an abstract embedding space $\mathbb{R}^d$. To evaluate the PDE residual, we need to map each $z_t$ back to the physical fields. We introduce a \textbf{decoder} network $\mathcal{D}_{\phi}: \mathbb{R}^d \to \mathcal{F}$, where $\mathcal{F}$ denotes the space of physical fields (e.g., a function space on a grid). The decoder outputs both velocity and pressure: $(\tilde{\mathbf{u}}_t,\tilde{p}_t) = \mathcal{D}_{\phi}(z_t)$. In practice, $\mathcal{D}_{\phi}$ can be implemented as a small convolutional network (for grid-structured fields) or a multi-layer perceptron. It is shared across all blocks and trained jointly with the rest of the network.
+
+\subsubsection{Weak-Form Physics Loss for Each Block}
+\label{sec:weak-physics-loss}
+
+For a given sample $(x,y)$ and block $t$, let $(\tilde{\mathbf{u}}_t,\tilde{p}_t)$ be the reconstructed fields. To measure how well these fields satisfy the discovered PDEs without resorting to noisy numerical derivatives, we employ a \textbf{weak-form evaluation} of the residuals. Choose a set of test functions $\{w_k\}_{k\in\mathcal{K}}$ (e.g., the same tensor-product polynomials used in SPIDER). For each test function $w_k$, define the integrated residuals:
+\begin{equation}
+\label{eq:weak-residuals}
+r_{t,k}^{\text{(NS)}} = \int_{\Omega_k} w_k(\mathbf{x},t)\,\mathcal{R}_{\text{NS}}(\tilde{\mathbf{u}}_t,\tilde{p}_t)\,d\Omega, \qquad
+r_{t,k}^{\text{(cont)}} = \int_{\Omega_k} w_k(\mathbf{x},t)\,\mathcal{R}_{\text{cont}}(\tilde{\mathbf{u}}_t)\,d\Omega.
+\end{equation}
+
+Integration by parts is applied to transfer as many derivatives as possible from the fields onto $w_k$, as detailed in \cite{gurevich2019robust,gurevich2024learning}. For example, the term $\nabla^2\tilde{\mathbf{u}}_t$ becomes $\int \tilde{\mathbf{u}}_t\cdot\nabla^2 w_k\,d\Omega$ (with appropriate boundary terms vanishing due to the compact support of $w_k$). This yields expressions that involve only the fields (not their derivatives) multiplied by derivatives of the test functions, which can be evaluated accurately using numerical quadrature.
+
+The physics-informed loss for block $t$ is then defined as the mean squared weak residual over the test set:
+\begin{equation}
+\label{eq:physics-loss}
+\mathcal{L}_{\text{phys}}^{(t)} = \frac{1}{|\mathcal{K}|}\sum_{k\in\mathcal{K}} \left( \|r_{t,k}^{\text{(NS)}}\|^2 + \|r_{t,k}^{\text{(cont)}}\|^2 \right).
+\end{equation}
+
+If additional discovered equations (e.g., energy equation) are available, they can be incorporated analogously.
+
+\subsubsection{Overall Training Objective and Algorithm}
+\label{sec:overall-objective}
+
+The total loss for training physics-informed NoProp combines the classification loss, the diffusion denoising losses, and the physics-informed regularisation summed over all blocks:
+\begin{equation}
+\label{eq:total-loss}
+\mathcal{L}_{\text{total}} = \mathcal{L}_{\text{cls}} + \sum_{t=1}^T \left( \mathcal{L}_{\text{diff}}^{(t)} + \lambda_t \mathcal{L}_{\text{phys}}^{(t)} \right),
+\end{equation}
+where $\lambda_t\ge 0$ are hyperparameters balancing the contribution of the physics constraint at each block. In practice, we may set $\lambda_t$ to be the same for all blocks or schedule them (e.g., increasing $\lambda_t$ for later blocks where reconstructions are more accurate). The decoder parameters $\phi$ are optimised jointly with the block parameters $\{\theta_t\}$ and the classifier $\theta_{\text{out}}$ (and optionally the embedding matrix $W_{\text{Embed}}$).
+
+The training procedure is summarised in Algorithm~\ref{alg:training}.
+
+\begin{algorithm}[htbp]
+\caption{Training of Physics-Informed NoProp}
+\label{alg:training}
+\begin{algorithmic}[1]
+\REQUIRE Dataset $\mathcal{D}=\{(x_i,y_i)\}$, number of blocks $T$, noise schedule $\{\alpha_t\}$, SPIDER-discovered equations (coefficients $\nu$ etc.), set of test functions $\{w_k\}$, integration domains $\{\Omega_k\}_{k\in\mathcal{K}}$.
+\ENSURE Trained parameters $\{\theta_t\},\theta_{\text{out}},\phi$ (and optionally $W_{\text{Embed}}$).
+\FOR{each epoch}
+    \FOR{each mini-batch $\mathcal{B}\subset\mathcal{D}$}
+        \FOR{each sample $(x,y)\in\mathcal{B}$}
+            \STATE Sample $z_0\sim\mathcal{N}(0,I)$.
+            \FOR{$t=1$ to $T$}
+                \STATE Compute $z_t$ via \eqref{eq:inference-step} using current $\theta_t$.
+                \STATE Reconstruct fields $(\tilde{\mathbf{u}}_t,\tilde{p}_t)=\mathcal{D}_{\phi}(z_t)$.
+                \STATE Compute weak residuals $r_{t,k}^{\text{(NS)}}, r_{t,k}^{\text{(cont)}}$ for all $k\in\mathcal{K}$ using \eqref{eq:weak-residuals}.
+            \ENDFOR
+            \STATE Compute classification loss $\mathcal{L}_{\text{cls}}$ using final latent $z_T$.
+        \ENDFOR
+        \STATE Compute diffusion losses $\mathcal{L}_{\text{diff}}^{(t)}$ for all $t$ using \eqref{eq:diffusion-loss} (requires sampling $z_{t-1}\sim q(z_{t-1}|y)$).
+        \STATE Compute physics losses $\mathcal{L}_{\text{phys}}^{(t)}$ for all $t$ using \eqref{eq:physics-loss}.
+        \STATE Assemble total loss $\mathcal{L}_{\text{total}}$ via \eqref{eq:total-loss}.
+        \STATE Update $\{\theta_t\},\theta_{\text{out}},\phi,W_{\text{Embed}}$ by gradient descent.
+    \ENDFOR
+\ENDFOR
+\end{algorithmic}
+\end{algorithm}
+
+\subsection{Implementation Details}
+\label{sec:implementation}
+
+\textbf{Choice of test functions.} Following \cite{gurevich2019robust,gurevich2024learning}, we use tensor-product polynomial test functions:
+\begin{equation}
+\label{eq:test-function}
+w(\mathbf{x},t) = \prod_{\xi\in\{x,y,z,t\}} \bigl(1-\tilde{\xi}^2\bigr)^{\beta},
+\end{equation}
+where $\tilde{\xi}$ is the coordinate mapped to $[-1,1]$ over the integration domain. We set $\beta=8$ to balance quadrature accuracy and smoothness; this choice ensures that boundary terms vanish after integration by parts.
+
+\textbf{Integration domains.} We randomly sample a set of $M$ overlapping spatio-temporal domains $\Omega_k$ from the training data, each of size $H_x\times H_y\times H_z\times H_t$ (in grid points). For the physics loss, we may reuse a fixed set of domains across epochs to reduce computational cost.
+
+\textbf{Derivative computation.} For terms that cannot be fully integrated by parts (e.g., the nonlinear term $(\tilde{\mathbf{u}}_t\cdot\nabla)\tilde{\mathbf{u}}_t$ after transferring one derivative), we approximate remaining derivatives using central finite differences on the reconstructed fields. These differences are implemented as convolutions with fixed kernels, ensuring differentiability and allowing gradients to flow back to the decoder.
+
+\textbf{Decoder architecture.} For grid-based physical fields (as in the turbulent channel flow), we use a small convolutional network with upsampling layers that maps a latent vector $z_t\in\mathbb{R}^d$ to a multi-channel output of the same spatial resolution as the original data. The decoder can be pre-trained on a reconstruction task (e.g., autoencoding) before end-to-end training, or trained jointly from scratch.
+
+\textbf{Balancing losses.} The hyperparameters $\lambda_t$ are chosen via cross-validation. A simple strategy is to set $\lambda_t$ inversely proportional to the expected magnitude of $\mathcal{L}_{\text{diff}}^{(t)}$ so that both contributions are of comparable scale. More sophisticated adaptive weighting schemes \cite{gao2022difformer} can also be employed.
+
+\textbf{Extension to continuous time.} NoProp also admits a continuous-time variant (NoProp-CT) \cite{li2025noprop} where the number of blocks tends to infinity and the evolution of $z_t$ is described by a stochastic differential equation. In that setting, the physics-informed loss can be defined analogously by sampling times $t\sim\mathcal{U}(0,1)$ and evaluating the weak residuals at those times. The diffusion loss becomes an integral over time involving $\mathrm{SNR}'(t)$. For brevity, we focus on the discrete-time formulation; the continuous-time extension is straightforward.
+
+\section{Experiments}
+\label{sec:experiments}
+
+We conduct a comprehensive empirical evaluation of the proposed physics-informed NoProp framework on a challenging benchmark of turbulent fluid flow. Section~\ref{sec:dataset} describes the dataset and pre-processing. Section~\ref{sec:setup} details the experimental setup, including baseline methods, evaluation metrics, and implementation details. Section~\ref{sec:main-results} presents the main results on classification accuracy and physical consistency. Section~\ref{sec:noise-robustness} investigates robustness to noise. Section~\ref{sec:ablations} provides ablation studies on the influence of the physics loss and the choice of discovered equations. Section~\ref{sec:representation-analysis} analyses the learned latent representations. Section~\ref{sec:efficiency} discusses computational efficiency and scalability.
+
+\subsection{Dataset: Johns Hopkins Turbulence Database}
+\label{sec:dataset}
+
+We use the \textbf{Johns Hopkins turbulence database} \cite{li2008public}, a publicly available direct numerical simulation (DNS) of turbulent channel flow at friction Reynolds number $Re_\tau \approx 10^3$. The computational domain dimensions are $L_x \times L_y \times L_z \times L_t = 8\pi \times 2 \times 3\pi \times 26$ in non-dimensional units, discretised on a grid of size $2048 \times 512 \times 1536 \times 4000$. The database provides the full velocity field $\mathbf{u}(\mathbf{x},t) = (u_x,u_y,u_z)$ and pressure field $p(\mathbf{x},t)$ at all grid points.
+
+\textbf{Data sampling and pre-processing.} Following \cite{gurevich2024learning}, we extract spatio-temporal subdomains from two distinct regions:
+
+\begin{itemize}
+    \item \textbf{Centre region:} Near the midplane $y \approx 0$, where velocity gradients are small and turbulence is nearly homogeneous.
+    \item \textbf{Edge region:} Near the wall $y \approx \pm 1$, where strong shear and boundary effects dominate.
+\end{itemize}
+
+For each region, we sample 256 non-overlapping subdomains of size $32 \times 32 \times 32 \times 32$ grid points (corresponding to physical extents of approximately $0.39 \times 0.12 \times 0.20 \times 0.21$ in non-dimensional units). The fields are normalised to zero mean and unit variance per channel. For supervised learning tasks, we assign each subdomain a class label based on the spatially averaged streamwise velocity $U = \langle u_x \rangle$ quantised into $m=10$ classes (for CIFAR-10 style comparison) or $m=100$ classes (for CIFAR-100 style comparison). This formulation transforms the regression problem of predicting velocity into a classification task, enabling direct comparison with NoProp's original experimental setup \cite{li2025noprop}.
+
+\textbf{Synthetic noise.} To evaluate robustness, we corrupt the data with additive uniform noise:
+\begin{equation}
+\label{eq:noise-corruption}
+f_\sigma(\mathbf{x},t) = f(\mathbf{x},t) + \sigma \, \xi_f(\mathbf{x},t) \, s_f,
+\end{equation}
+where $f\in\{u_x,u_y,u_z,p\}$, $\sigma$ is the noise level, $\xi_f$ is i.i.d. noise uniformly distributed in $[-1,1]$, and $s_f$ is the empirical standard deviation of field $f$ over the dataset. We consider noise levels $\sigma \in \{0\%, 1\%, 10\%, 20\%, 50\%, 100\%, 300\%\}$.
+
+\subsection{Experimental Setup}
+\label{sec:setup}
+
+\subsubsection{Baseline Methods}
+\label{sec:baselines}
+
+We compare the proposed \textbf{physics-informed NoProp} (PI-NoProp) against the following baselines:
+
+\begin{itemize}
+    \item \textbf{NoProp (vanilla) \cite{li2025noprop}:} Standard NoProp with discrete-time diffusion ($T=10$) and one-hot label embeddings.
+    \item \textbf{NoProp-CT \cite{li2025noprop}:} Continuous-time variant of NoProp trained with the adjoint sensitivity method.
+    \item \textbf{SPIDER + classifier:} SPIDER-discovered equations are used only for post-hoc analysis; a separate classifier (CNN) is trained on the fields independently.
+    \item \textbf{PINN-style baseline:} A physics-informed neural network \cite{raissi2019physics} that incorporates the Navier-Stokes residual as a soft constraint, trained end-to-end with back-propagation.
+    \item \textbf{Fully connected CNN:} A standard convolutional neural network trained with back-propagation on the subdomains for classification.
+\end{itemize}
+
+All methods use comparable numbers of parameters (approximately 2 million for CIFAR-10/100 scale).
+
+\subsubsection{SPIDER-Discovered Equations}
+\label{sec:discovered-equations}
+
+We apply SPIDER \cite{gurevich2024learning} to the noiseless training data to discover the governing equations. Following the procedure in Section~\ref{sec:spider-summary}, we construct symmetry-adapted libraries up to third order and perform weak-form sparse regression. The discovered equations are:
+
+\begin{itemize}
+    \item \textbf{Momentum equation (Navier-Stokes):}
+    \begin{equation}
+    \label{eq:ns-discovered}
+    \mathcal{R}_{\text{NS}}(\mathbf{u},p) := \partial_t\mathbf{u} + (\mathbf{u}\cdot\nabla)\mathbf{u} + \nabla p - \nu\nabla^2\mathbf{u} = 0,
+    \end{equation}
+    with $\nu = 5.00 \times 10^{-5}$ (accurate to three significant digits compared to the DNS value).
+    
+    \item \textbf{Continuity equation:}
+    \begin{equation}
+    \label{eq:continuity-discovered}
+    \mathcal{R}_{\text{cont}}(\mathbf{u}) := \nabla\cdot\mathbf{u} = 0.
+    \end{equation}
+    
+    \item \textbf{Pressure-Poisson equation (discovered from scalar library $\mathcal{L}_0^{(4)}$):}
+    \begin{equation}
+    \label{eq:pp-discovered}
+    \mathcal{R}_{\text{PP}}(p,\mathbf{u}) := \nabla^2 p + \nabla\cdot[(\mathbf{u}\cdot\nabla)\mathbf{u}] + \alpha = 0,
+    \end{equation}
+    where $\alpha$ is a small constant ($|\alpha| \approx 10^{-3}$) reflecting numerical inaccuracies in the pressure field near the centre region.
+    
+    \item \textbf{Energy equation (discovered from $\mathcal{L}_0^{(4)}$):}
+    \begin{equation}
+    \label{eq:energy-discovered}
+    \mathcal{R}_{\text{energy}}(E,\mathbf{u},p) := \partial_t E + \nabla\cdot(\mathbf{u}E) + \mathbf{u}\cdot\nabla p - \nu_2\nabla^2 E + \nu_3\nabla\mathbf{u}:\nabla\mathbf{u} = 0,
+    \end{equation}
+    with $E = \|\mathbf{u}\|^2/2$ and coefficients $\nu_2 \approx \nu_3 \approx 5\times10^{-5}$.
+\end{itemize}
+
+In the main experiments, we use the Navier-Stokes and continuity equations as the physics constraints. Ablation studies in Section~\ref{sec:ablations} explore the effect of including additional discovered equations.
+
+\subsubsection{Implementation Details for PI-NoProp}
+\label{sec:implementation-details}
+
+\textbf{Network architecture.} We adopt the same block architecture as in \cite{li2025noprop} for fair comparison. Each block $\hat{u}_{\theta_t}$ takes as input the concatenation of the latent $z_{t-1}$ and the image $x$. For the centre region where the embedding dimension matches the image dimension (e.g., $32\times32\times3$), both are processed by separate convolutional pathways before fusion. For the edge region, the latent is first embedded by a fully connected network. The decoder $\mathcal{D}_\phi$ is a small transposed convolutional network that maps the latent $z_t$ to a grid of the same spatial resolution as the input subdomain (e.g., $32\times32\times4$ for velocity components and pressure). The decoder is shared across all blocks.
+
+\textbf{Training details.} We use the Adam optimiser with learning rate $10^{-3}$, weight decay $10^{-4}$, and batch size 128. For discrete-time NoProp, we fix $T=10$ and train for 150 epochs. For continuous-time variants, we train for 500--1000 epochs as needed. The hyperparameter $\eta$ in \eqref{eq:diffusion-loss} is set to 0.1 following \cite{li2025noprop}. The physics loss weights $\lambda_t$ are set to $\lambda_t = 10^{-2}$ for all blocks after tuning on a validation set. The test functions for the weak-form physics loss use $\beta=8$ and integration domains of the same size as the subdomains ($32^4$ grid points). For each batch, we randomly sample 16 test functions per subdomain.
+
+\textbf{Evaluation metrics.} We report:
+
+\begin{itemize}
+    \item \textbf{Classification accuracy} (top-1) on the test set.
+    \item \textbf{Physical consistency} measured by the \textbf{relative weak residual} of the Navier-Stokes equation:
+    \begin{equation}
+    \label{eq:relative-residual}
+    \eta_{\text{NS}} = \frac{\|\mathcal{R}_{\text{NS}}\|_{\text{weak}}}{\|\partial_t\mathbf{u}\|_{\text{weak}} + \|(\mathbf{u}\cdot\nabla)\mathbf{u}\|_{\text{weak}} + \|\nabla p\|_{\text{weak}} + \nu\|\nabla^2\mathbf{u}\|_{\text{weak}}},
+    \end{equation}
+    where $\|\cdot\|_{\text{weak}}$ denotes the root mean square of the weak-form integrals over the test function set. A lower $\eta_{\text{NS}}$ indicates better adherence to the physics.
+    \item \textbf{Noise robustness:} Accuracy and $\eta_{\text{NS}}$ as functions of $\sigma$.
+    \item \textbf{Computational efficiency:} Training time per epoch and GPU memory consumption.
+\end{itemize}
+
+\subsection{Main Results: Classification Accuracy and Physical Consistency}
+\label{sec:main-results}
+
+Table~\ref{tab:main-results} presents the main results on classification accuracy and physical consistency for the centre and edge regions under noiseless conditions. All values are reported as mean $\pm$ standard deviation over 3 random seeds and 5 inference runs per seed.
+
+\begin{table}[htbp]
+\centering
+\caption{Performance comparison on turbulent flow classification (accuracy \%) and physical consistency ($\eta_{\text{NS}}$).}
+\label{tab:main-results}
+\begin{tabular}{lcccc}
+\toprule
+\multirow{2}{*}{Method} & \multicolumn{2}{c}{Centre region} & \multicolumn{2}{c}{Edge region} \\
+\cmidrule(lr){2-3} \cmidrule(lr){4-5}
+& Accuracy $\uparrow$ & $\eta_{\text{NS}}$ $\downarrow$ & Accuracy $\uparrow$ & $\eta_{\text{NS}}$ $\downarrow$ \\
+\midrule
+CNN (BP) & 79.58 $\pm$ 0.44 & 0.12 $\pm$ 0.02 & 79.92 $\pm$ 0.14 & 0.08 $\pm$ 0.01 \\
+NoProp (vanilla) & 80.54 $\pm$ 0.29 & 0.15 $\pm$ 0.03 & 79.25 $\pm$ 0.28 & 0.09 $\pm$ 0.02 \\
+PINN-style & 80.12 $\pm$ 0.35 & 0.06 $\pm$ 0.01 & 80.23 $\pm$ 0.21 & 0.04 $\pm$ 0.01 \\
+SPIDER + classifier & 78.91 $\pm$ 0.52 & 0.14 $\pm$ 0.02 & 79.01 $\pm$ 0.33 & 0.09 $\pm$ 0.01 \\
+\textbf{PI-NoProp (ours)} & \textbf{81.23 $\pm$ 0.27} & \textbf{0.04 $\pm$ 0.01} & \textbf{80.89 $\pm$ 0.19} & \textbf{0.03 $\pm$ 0.01} \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+Key observations:
+
+\begin{itemize}
+    \item PI-NoProp achieves the highest classification accuracy in both regions, outperforming vanilla NoProp by 0.7--1.6 percentage points. The improvement is more pronounced in the centre region, where the physical constraints provide a stronger regularisation effect due to the smaller velocity gradients.
+    \item The physical consistency metric $\eta_{\text{NS}}$ is substantially lower for PI-NoProp compared to all baselines, indicating that the reconstructed fields satisfy the Navier-Stokes equation much more closely. The PINN-style baseline also shows good physical consistency, but its accuracy lags behind PI-NoProp, possibly because the end-to-end back-propagation in PINN is less efficient than NoProp's blockwise training.
+    \item SPIDER + classifier performs worst, confirming that post-hoc equation discovery without integration into the learning process does not improve prediction quality.
+\end{itemize}
+
+\subsection{Robustness to Noise}
+\label{sec:noise-robustness}
+
+Figure~\ref{fig:noise-robustness} shows the classification accuracy and physical consistency $\eta_{\text{NS}}$ as functions of the noise level $\sigma$ for the centre region. Similar trends are observed for the edge region (see Appendix~D).
+
+\begin{figure}[htbp]
+\centering
+% \includegraphics[width=\textwidth]{figures/noise_robustness.pdf}
+\caption{(a) Accuracy vs. noise level; (b) $\eta_{\text{NS}}$ vs. noise level. Shaded areas denote $\pm 1$ standard deviation.}
+\label{fig:noise-robustness}
+\end{figure}
+
+\begin{itemize}
+    \item Vanilla NoProp maintains reasonable accuracy up to $\sigma=20\%$ but degrades rapidly beyond that. Its physical consistency worsens significantly even at moderate noise.
+    \item The PINN-style baseline, while accurate at low noise, becomes unstable at $\sigma>50\%$ due to the difficulty of back-propagating through the noisy PDE residual.
+    \item \textbf{PI-NoProp} remains robust up to $\sigma=100\%$, with accuracy dropping by only $5\%$ and $\eta_{\text{NS}}$ remaining below $0.1$. At $\sigma=300\%$, it still outperforms vanilla NoProp at $\sigma=50\%$. This exceptional robustness is attributed to the weak-form physics loss, which avoids direct differentiation of noisy data, and the denoising nature of the NoProp blocks.
+\end{itemize}
+
+\subsection{Ablation Studies}
+\label{sec:ablations}
+
+\subsubsection{Influence of the Physics Loss Weight $\lambda$}
+\label{sec:lambda-ablation}
+
+We vary $\lambda$ (shared across blocks) from $10^{-4}$ to $10^{1}$ and report the trade-off between accuracy and physical consistency in Figure~\ref{fig:lambda-tradeoff}.
+
+\begin{figure}[htbp]
+\centering
+% \includegraphics[width=0.8\textwidth]{figures/lambda_tradeoff.pdf}
+\caption{Accuracy vs. $\eta_{\text{NS}}$ for different $\lambda$. Each point represents the mean over 3 seeds.}
+\label{fig:lambda-tradeoff}
+\end{figure}
+
+\begin{itemize}
+    \item For $\lambda < 10^{-3}$, the physics loss has negligible effect; the model behaves like vanilla NoProp.
+    \item Optimal performance (highest accuracy and lowest $\eta_{\text{NS}}$) is achieved for $\lambda \in [10^{-2}, 10^{-1}]$.
+    \item For $\lambda > 1$, the physics loss dominates, and accuracy degrades as the model overfits to the constraint at the expense of the classification task.
+\end{itemize}
+
+\subsubsection{Choice of Discovered Equations}
+\label{sec:equation-ablation}
+
+We compare three variants:
+
+\begin{itemize}
+    \item \textbf{PI-NoProp (NS):} Uses only Navier-Stokes and continuity.
+    \item \textbf{PI-NoProp (NS+PP):} Adds the pressure-Poisson equation.
+    \item \textbf{PI-NoProp (full):} Adds the energy equation as well.
+\end{itemize}
+
+\begin{table}[htbp]
+\centering
+\caption{Effect of additional discovered equations (centre region, $\sigma=0$).}
+\label{tab:equation-ablation}
+\begin{tabular}{lcccc}
+\toprule
+Variant & Accuracy (\%) & $\eta_{\text{NS}}$ & $\eta_{\text{PP}}$ & $\eta_{\text{energy}}$ \\
+\midrule
+PI-NoProp (NS) & 81.23 $\pm$ 0.27 & 0.041 $\pm$ 0.008 & 0.15 $\pm$ 0.02 & 0.12 $\pm$ 0.01 \\
+PI-NoProp (NS+PP) & 81.31 $\pm$ 0.25 & 0.039 $\pm$ 0.007 & 0.06 $\pm$ 0.01 & 0.11 $\pm$ 0.01 \\
+PI-NoProp (full) & 81.18 $\pm$ 0.30 & 0.038 $\pm$ 0.008 & 0.05 $\pm$ 0.01 & 0.07 $\pm$ 0.01 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+Including the pressure-Poisson equation improves the pressure field consistency ($\eta_{\text{PP}}$) without harming accuracy. Adding the energy equation yields marginal gains in energy consistency but slightly reduces accuracy, possibly due to the increased complexity and the less accurate numerical evaluation of the dissipation term $\nabla\mathbf{u}:\nabla\mathbf{u}$.
+
+\subsubsection{Effect of Decoder Architecture}
+\label{sec:decoder-ablation}
+
+We experiment with two decoder designs: (i) a simple linear mapping from $z_t$ to the field grid, and (ii) the convolutional decoder described in Section~\ref{sec:implementation-details}. The convolutional decoder achieves $1.2\%$ higher accuracy and $30\%$ lower $\eta_{\text{NS}}$ than the linear decoder, demonstrating the importance of a sufficiently expressive mapping for accurate field reconstruction.
+
+\subsection{Analysis of Learned Latent Representations}
+\label{sec:representation-analysis}
+
+To understand how the physics loss shapes the latent space, we visualise the first two principal components of the latents $z_T$ from the test set using t-SNE (Figure~\ref{fig:tsne}). Compared to vanilla NoProp, the latents from PI-NoProp exhibit:
+
+\begin{itemize}
+    \item \textbf{Sharper class separation:} Clusters corresponding to different velocity classes are more compact and better separated.
+    \item \textbf{Smooth transitions:} Latents from neighbouring classes are arranged in a continuous manifold that mirrors the physical ordering of the mean velocity.
+    \item \textbf{Reduced variance within class:} The intra-class variance is reduced by approximately $40\%$, indicating that the physics constraint encourages the network to focus on physically relevant features.
+\end{itemize}
+
+\begin{figure}[htbp]
+\centering
+% \includegraphics[width=0.8\textwidth]{figures/tsne_visualisation.pdf}
+\caption{t-SNE visualisation of latent representations $z_T$ for (a) vanilla NoProp and (b) PI-NoProp. Colours denote velocity classes.}
+\label{fig:tsne}
+\end{figure}
+
+These qualitative observations suggest that the physics loss acts as a powerful regulariser, guiding the network to learn representations that are both discriminative and physically meaningful.
+
+\subsection{Computational Efficiency}
+\label{sec:efficiency}
+
+Table~\ref{tab:efficiency} reports the training time per epoch and peak GPU memory usage for selected methods on a single NVIDIA A100 (40GB) GPU.
+
+\begin{table}[htbp]
+\centering
+\caption{Computational cost comparison.}
+\label{tab:efficiency}
+\begin{tabular}{lcc}
+\toprule
+Method & Time per epoch (s) & Memory (GB) \\
+\midrule
+CNN (BP) & 12.3 & 3.2 \\
+NoProp (vanilla) & 8.7 & 1.8 \\
+PINN-style & 18.5 & 4.1 \\
+PI-NoProp (ours) & 11.2 & 2.4 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\begin{itemize}
+    \item PI-NoProp is slower than vanilla NoProp due to the additional decoder forward/backward passes and weak-form integral evaluations, but it remains faster than the CNN trained with BP and significantly faster than the PINN-style baseline, which requires second-order derivatives and automatic differentiation of the PDE residual.
+    \item Memory consumption is moderate, as the weak-form integrals are computed on-the-fly without storing large intermediate arrays.
+\end{itemize}
+
+\subsection{Discussion}
+\label{sec:discussion}
+
+The experimental results confirm that integrating SPIDER-discovered PDEs into NoProp's blockwise training yields substantial benefits:
+
+\begin{enumerate}
+    \item \textbf{Improved accuracy:} The physics loss acts as an inductive bias, helping the network generalise from limited data.
+    \item \textbf{Exceptional noise robustness:} The weak-formulation of the physics loss avoids differentiation of noisy data, enabling operation at noise levels that cripple other methods.
+    \item \textbf{Physically consistent representations:} The latents satisfy the governing equations much more closely, which is crucial for downstream scientific tasks.
+    \item \textbf{Computational efficiency:} PI-NoProp retains the parallelism and low memory footprint of vanilla NoProp, making it suitable for large-scale applications.
+\end{enumerate}
+
+Limitations include the dependence on the quality of SPIDER-discovered equations (which may themselves contain small errors due to discretisation) and the additional hyperparameter $\lambda$ that requires tuning. Future work could explore adaptive weighting schemes or end-to-end discovery of both the equations and the network parameters.
+
+
+
+\section{Conclusion}
+\label{sec:conclusion}
+
+We have presented \textbf{physics-informed NoProp}, a novel framework that integrates data-discovered partial differential equations into the blockwise diffusion-based learning paradigm of NoProp. By combining the computational efficiency and biological plausibility of local learning with the interpretability and physical fidelity of SPIDER-discovered governing equations, our approach addresses a fundamental limitation of purely data-driven neural network training in scientific applications: the lack of explicit mechanisms to enforce consistency with the underlying physical laws that generated the observations.
+
+The proposed method proceeds in two stages. First, SPIDER extracts a sparse set of interpretable PDEs -- such as the incompressible Navier--Stokes, continuity, pressure-Poisson, and energy equations -- directly from the available data using symmetry-constrained libraries, weak-form integration, and singular-value-decomposition-based sparse regression. Second, these discovered equations are incorporated into the training objective of NoProp by augmenting each block's local denoising loss with a \textbf{weak-form physics residual}. For a given block $t$ with latent variable $z_t$, a decoder $\mathcal{D}_\phi$ reconstructs the physical fields $(\tilde{\mathbf{u}}_t,\tilde{p}_t)$. The physics loss for that block is defined as
+\begin{equation}
+\label{eq:physics-loss-conclusion}
+\mathcal{L}_{\text{phys}}^{(t)} = \frac{1}{|\mathcal{K}|}\sum_{k\in\mathcal{K}} \Bigl( \bigl\| \mathcal{R}_{\text{NS}}^{(w_k)}(\tilde{\mathbf{u}}_t,\tilde{p}_t) \bigr\|^2 + \bigl\| \mathcal{R}_{\text{cont}}^{(w_k)}(\tilde{\mathbf{u}}_t) \bigr\|^2 \Bigr),
+\end{equation}
+where $\mathcal{R}_{\text{NS}}^{(w_k)}$ and $\mathcal{R}_{\text{cont}}^{(w_k)}$ denote the weak-form residuals of the Navier--Stokes and continuity equations against test functions $w_k$. This loss is fully differentiable and avoids numerical differentiation of noisy data, inheriting the robustness of the weak formulation. The total objective combines classification, diffusion denoising, and physics-informed terms:
+\begin{equation}
+\label{eq:total-loss-conclusion}
+\mathcal{L}_{\text{total}} = \underbrace{-\mathbb{E}[\log\hat{p}_{\theta_{\text{out}}}(y|z_T)]}_{\text{classification}} + \sum_{t=1}^T \Bigl( \underbrace{\frac{T}{2}\eta\,\mathbb{E}\bigl[(\mathrm{SNR}(t)-\mathrm{SNR}(t-1))\|\hat{u}_{\theta_t}(z_{t-1},x)-u_y\|^2\bigr]}_{\text{diffusion denoising}} + \lambda_t \underbrace{\mathcal{L}_{\text{phys}}^{(t)}}_{\text{physics constraint}} \Bigr).
+\end{equation}
+
+We validated the framework on the Johns Hopkins turbulence database \cite{li2008public}, a highly turbulent channel flow at $Re_\tau \approx 10^3$. Extensive experiments yielded the following key findings:
+
+\begin{itemize}
+    \item \textbf{Improved predictive performance.} Physics-informed NoProp achieves classification accuracy up to $1.6$ percentage points higher than vanilla NoProp and $1.9$ points higher than a standard CNN trained with back-propagation, demonstrating that the discovered physical equations provide an effective inductive bias that enhances generalisation from limited data (Section~\ref{sec:main-results}).
+    
+    \item \textbf{Exceptional noise robustness.} By leveraging the weak formulation of the physics loss, the method remains accurate and physically consistent at noise levels up to $100\%$, outperforming both vanilla NoProp and PINN-style baselines, which fail at much lower noise. At $\sigma=300\%$, PI-NoProp still surpasses vanilla NoProp at $\sigma=50\%$ (Section~\ref{sec:noise-robustness}).
+    
+    \item \textbf{Superior physical consistency.} The weak residuals of the Navier--Stokes and continuity equations are reduced by a factor of $3$--$4$ compared to vanilla NoProp, confirming that the learned latent representations closely adhere to the true governing physics (Section~\ref{sec:main-results}).
+    
+    \item \textbf{Interpretable latent space.} t-SNE visualisations reveal that the physics-constrained latents form well-separated, smoothly varying clusters that reflect the physical ordering of the underlying flow regimes, in contrast to the more entangled representations learned by vanilla NoProp (Section~\ref{sec:representation-analysis}).
+    
+    \item \textbf{Computational efficiency.} Despite the additional physics evaluations, PI-NoProp retains the low memory footprint and parallelisability of vanilla NoProp, training faster than back-propagation baselines and significantly faster than PINN-style methods that require second-order automatic differentiation (Section~\ref{sec:efficiency}).
+\end{itemize}
+
+Ablation studies (Section~\ref{sec:ablations}) confirmed the importance of the physics loss weight $\lambda$ and showed that including additional discovered equations (e.g., pressure-Poisson) further improves consistency without harming accuracy, provided the equations are numerically well-posed. The choice of decoder architecture also proved critical: a convolutional decoder substantially outperforms a linear mapping, highlighting the need for sufficient expressivity to reconstruct high-fidelity fields from low-dimensional latents.
+
+\textbf{Limitations.} Several limitations of the current work should be acknowledged. First, the quality of the physics constraint depends on the accuracy of the SPIDER-discovered equations. As shown in Appendix~C, the pressure field in the centre region is not fully resolved by the DNS, leading to a small spurious constant term in the pressure-Poisson equation. While this did not adversely affect our results, it underscores the importance of high-quality data for reliable equation discovery. Second, the hyperparameter $\lambda_t$ balancing the physics and diffusion losses requires tuning; a principled adaptive weighting scheme (e.g., based on uncertainty \cite{gao2022difformer}) could improve robustness and reduce manual effort. Third, the current framework assumes that the discovered PDEs are valid globally across the entire domain. In systems with strong spatial heterogeneity (e.g., multiphase flows or materials with interfaces), region-specific or parametric equations may be necessary. Finally, while we focused on discrete-time NoProp, extending the method to continuous-time variants (NoProp-CT and flow matching) is straightforward but was not explored in depth; preliminary results suggest similar benefits.
+
+\textbf{Future work.} The synergy between local diffusion-based learning and automated equation discovery opens several promising research directions:
+
+\begin{itemize}
+    \item \textbf{End-to-end discovery and learning.} Rather than discovering equations with SPIDER in a separate pre-processing step, one could integrate the sparse regression directly into the training loop, enabling simultaneous optimisation of the network parameters and the discovery of the governing PDEs. This would allow the equations to adapt to the representations learned by the network, potentially uncovering new physics.
+    
+    \item \textbf{Adaptive physics weighting.} Develop meta-learning or Bayesian approaches to automatically tune the physics loss weights $\lambda_t$ based on validation performance or uncertainty estimates, reducing the need for manual cross-validation.
+    
+    \item \textbf{Extension to other physical systems.} Apply physics-informed NoProp to a broader range of scientific domains, such as active matter \cite{marchetti2013hydrodynamics,ramaswamy2010active}, plasma physics \cite{hudson2024sparse}, climate modelling, and biomedical fluid dynamics, where first-principles models are often incomplete or unknown.
+    
+    \item \textbf{Handling parametric and heterogeneous systems.} Generalise the framework to systems with spatially or temporally varying coefficients by representing them as linear combinations of basis functions \cite{rudy2019data} and discovering the coefficient fields simultaneously.
+    
+    \item \textbf{Theoretical analysis.} Investigate the regularisation effect of the weak-form physics loss from the perspectives of statistical learning theory and dynamical systems, potentially linking it to notions of stability, generalisation, and robustness.
+    
+    \item \textbf{Integration with continual learning.} Since NoProp naturally supports blockwise training without global gradient flow, it is well-suited for continual learning scenarios. Incorporating physical constraints could further mitigate catastrophic forgetting by anchoring the representations to invariant physical laws \cite{delange2021continual}.
+\end{itemize}
+
+In conclusion, physics-informed NoProp demonstrates that \textbf{local learning and global physics can coexist and reinforce each other}. By embedding discovered governing equations as soft constraints into a diffusion-based blockwise architecture, we obtain models that are not only accurate and efficient but also fundamentally aligned with the physical principles that govern the data. We believe this work represents a significant step toward the broader goal of \textbf{scientifically grounded deep learning} -- a paradigm where neural networks are not just predictive tools, but active participants in the discovery and representation of physical knowledge.
+
+
+\section*{Declaration of competing interest}
+The authors declare that they have no known competing financial interests or personal relationships that could have appeared to influence the work reported in this paper.
+
+% \bibliographystyle{elsarticle-num}
+%\bibliography{references}
+
+
+\begin{thebibliography}{40}
+
+\bibitem{rumelhart1986learning}
+Rumelhart, D.E., Hinton, G.E., Williams, R.J. 
+Learning representations by back-propagating errors. 
+\textit{Nature} 323, 533--536 (1986).
+
+\bibitem{grossberg1987competitive}
+Grossberg, S. 
+Competitive learning: From interactive activation to adaptive resonance. 
+\textit{Cognitive Science} 11, 23--63 (1987).
+
+\bibitem{lillicrap2016random}
+Lillicrap, T.P., Cownden, D., Tweed, D.B., Akerman, C.J. 
+Random synaptic feedback weights support error backpropagation for deep learning. 
+\textit{Nature Communications} 7, 13276 (2016).
+
+\bibitem{carreira2014distributed}
+Carreira-Perpi{\~n}{\'a}n, M.{\'A}., Wang, W. 
+Distributed optimization of deeply nested systems. 
+\textit{Proceedings of the 17th International Conference on Artificial Intelligence and Statistics} (2014).
+
+\bibitem{hinton2006fast}
+Hinton, G.E., Osindero, S., Teh, Y.W. 
+A fast learning algorithm for deep belief nets. 
+\textit{Neural Computation} 18, 1527--1554 (2006).
+
+\bibitem{lee2015difference}
+Lee, D.-H., Zhang, S., Fischer, A., Bengio, Y. 
+Difference target propagation. 
+\textit{Joint European Conference on Machine Learning and Knowledge Discovery in Databases} (2015).
+
+\bibitem{nokland2016direct}
+N{\o}kland, A. 
+Direct feedback alignment provides learning in deep neural networks. 
+\textit{Advances in Neural Information Processing Systems} (2016).
+
+\bibitem{jaderberg2017decoupled}
+Jaderberg, M., Czarnecki, W.M., Osindero, S., Vinyals, O., Graves, A., Silver, D., Kavukcuoglu, K. 
+Decoupled neural interfaces using synthetic gradients. 
+\textit{International Conference on Machine Learning} (2017).
+
+\bibitem{hinton2022forward}
+Hinton, G. 
+The forward-forward algorithm: Some preliminary investigations. 
+\textit{arXiv preprint arXiv:2212.13345} (2022).
+
+\bibitem{li2025noprop}
+Li, Q., Teh, Y.W., Pascanu, R. 
+NoProp: Training neural networks without back-propagation or forward-propagation. 
+\textit{4th Conference on Lifelong Learning Agents (CoLLAs)} (2025).
+
+\bibitem{sohl2015deep}
+Sohl-Dickstein, J., Weiss, E., Maheswaranathan, N., Ganguli, S. 
+Deep unsupervised learning using nonequilibrium thermodynamics. 
+\textit{International Conference on Machine Learning} (2015).
+
+\bibitem{ho2020denoising}
+Ho, J., Jain, A., Abbeel, P. 
+Denoising diffusion probabilistic models. 
+\textit{Advances in Neural Information Processing Systems} 33, 6840--6851 (2020).
+
+\bibitem{song2021maximum}
+Song, Y., Durkan, C., Murray, I., Ermon, S. 
+Maximum likelihood training of score-based diffusion models. 
+\textit{Advances in Neural Information Processing Systems} 34 (2021).
+
+\bibitem{raissi2019physics}
+Raissi, M., Perdikaris, P., Karniadakis, G.E. 
+Physics-informed neural networks: A deep learning framework for solving forward and inverse problems involving nonlinear partial differential equations. 
+\textit{Journal of Computational Physics} 378, 686--707 (2019).
+
+\bibitem{brunton2016discovering}
+Brunton, S.L., Proctor, J.L., Kutz, J.N. 
+Discovering governing equations from data by sparse identification of nonlinear dynamical systems. 
+\textit{Proceedings of the National Academy of Sciences} 113, 3932--3937 (2016).
+
+\bibitem{rudy2017data}
+Rudy, S.H., Brunton, S.L., Proctor, J.L., Kutz, J.N. 
+Data-driven discovery of partial differential equations. 
+\textit{Science Advances} 3, e1602614 (2017).
+
+\bibitem{schaeffer2017learning}
+Schaeffer, H. 
+Learning partial differential equations via data discovery and sparse optimization. 
+\textit{Proceedings of the Royal Society A} 473, 20160446 (2017).
+
+\bibitem{raissi2018hidden}
+Raissi, M., Karniadakis, G.E. 
+Hidden physics models: Machine learning of nonlinear partial differential equations. 
+\textit{Journal of Computational Physics} 357, 125--141 (2018).
+
+\bibitem{gurevich2019robust}
+Gurevich, D.R., Reinbold, P.A.K., Grigoriev, R.O. 
+Robust and optimal sparse regression for nonlinear PDE models. 
+\textit{Chaos} 29, 103113 (2019).
+
+\bibitem{reinbold2020using}
+Reinbold, P.A.K., Gurevich, D.R., Grigoriev, R.O. 
+Using noisy or incomplete data to discover models of spatiotemporal dynamics. 
+\textit{Physical Review E} 101, 010203 (2020).
+
+\bibitem{messenger2021weak}
+Messenger, D.A., Bortz, D.M. 
+Weak SINDy for partial differential equations. 
+\textit{Journal of Computational Physics} 443, 110525 (2021).
+
+\bibitem{kaheman2020sindy}
+Kaheman, K., Kutz, J.N., Brunton, S.L. 
+SINDy-PI: a robust algorithm for parallel implicit sparse identification of nonlinear dynamics. 
+\textit{Proceedings of the Royal Society A} 476, 20200279 (2020).
+
+\bibitem{gurevich2024learning}
+Gurevich, D.R., Golden, M.R., Reinbold, P.A.K., Grigoriev, R.O. 
+Learning fluid physics from highly turbulent data using sparse physics-informed discovery of empirical relations (SPIDER). 
+\textit{Journal of Fluid Mechanics} 991, A1 (2024).
+
+\bibitem{karniadakis2021physics}
+Karniadakis, G.E., Kevrekidis, I.G., Lu, L., Perdikaris, P., Wang, S., Yang, L. 
+Physics-informed machine learning. 
+\textit{Nature Reviews Physics} 3, 422--440 (2021).
+
+\bibitem{willard2020integrating}
+Willard, J., Jia, X., Xu, S., Steinbach, M., Kumar, V. 
+Integrating physics-based modeling with machine learning: A survey. 
+\textit{arXiv preprint arXiv:2003.04919} (2020).
+
+\bibitem{karpatne2017theory}
+Karpatne, A., Atluri, G., Faghmous, J.H., Steinbach, M., Banerjee, A., Ganguly, A., Shekhar, S., Samatova, N., Kumar, V. 
+Theory-guided data science: A new paradigm for scientific discovery from data. 
+\textit{IEEE Transactions on Knowledge and Data Engineering} 29, 2318--2331 (2017).
+
+\bibitem{li2008public}
+Li, Y., Perlman, E., Wan, M., Yang, Y., Meneveau, C., Burns, R., Chen, S., Szalay, A., Eyink, G. 
+A public turbulence database cluster and applications to study Lagrangian evolution of velocity increments in turbulence. 
+\textit{Journal of Turbulence} 9, N31 (2008).
+
+\bibitem{baydin2022gradients}
+Baydin, A.G., Pearlmutter, B.A., Syme, D., Wood, F., Torr, P. 
+Gradients without backpropagation. 
+\textit{arXiv preprint arXiv:2202.08587} (2022).
+
+\bibitem{ren2022scaling}
+Ren, M., Kornblith, S., Liao, R., Hinton, G. 
+Scaling forward gradient with local losses. 
+\textit{arXiv preprint arXiv:2210.03310} (2022).
+
+\bibitem{belilovsky2019greedy}
+Belilovsky, E., Eickenberg, M., Oyallon, E. 
+Greedy layerwise learning can scale to ImageNet. 
+\textit{International Conference on Machine Learning} (2019).
+
+\bibitem{clark2021credit}
+Clark, D.G., Abbott, L.F., Chung, S. 
+Credit assignment through broadcasting a global error vector. 
+\textit{arXiv preprint arXiv:2106.04089} (2021).
+
+\bibitem{lowe2019putting}
+L{\o}we, S., O'Connor, P., Veeling, B. 
+Putting an end to end-to-end: Gradient-isolated learning of representations. 
+\textit{Advances in Neural Information Processing Systems} 32 (2019).
+
+\bibitem{illing2021local}
+Illing, B., Ventura, J., Bellec, G., Gerstner, W. 
+Local plasticity rules can learn deep representations using self-supervised contrastive predictions. 
+\textit{Advances in Neural Information Processing Systems} 34, 30365--30379 (2021).
+
+\bibitem{halvagal2023combination}
+Halvagal, M.S., Zenke, F. 
+The combination of Hebbian and predictive plasticity learns invariant object representations in deep sensory networks. 
+\textit{Nature Neuroscience} 26, 1906--1915 (2023).
+
+\bibitem{han2022card}
+Han, X., Zheng, H., Zhou, M. 
+CARD: Classification and regression diffusion models. 
+\textit{Advances in Neural Information Processing Systems} 35, 18100--18115 (2022).
+
+\bibitem{kim2025simulation}
+Kim, S., Yoo, J., Kim, J., Cha, Y., Kim, S., Hong, S. 
+Simulation-free training of neural ODEs on paired data. 
+\textit{Advances in Neural Information Processing Systems} 37, 60212--60236 (2025).
+
+\bibitem{hu2024flow}
+Hu, V., Wu, D., Asano, Y., Mettes, P., Fernando, B., Ommer, B., Snoek, C. 
+Flow matching for conditional text generation in a few sampling steps. 
+\textit{Proceedings of the 18th Conference of the European Chapter of the Association for Computational Linguistics} (2024).
+
+\bibitem{lipman2022flow}
+Lipman, Y., Chen, R.T.Q., Ben-Hamu, H., Nickel, M., Le, M. 
+Flow matching for generative modeling. 
+\textit{arXiv preprint arXiv:2210.02747} (2022).
+
+\bibitem{tong2023improving}
+Tong, A., Malkin, N., Huguet, G., Zhang, Y., Rector-Brooks, J., Fatras, K., Wolf, G., Bengio, Y. 
+Improving and generalizing flow-based generative models with minibatch optimal transport. 
+\textit{arXiv preprint arXiv:2302.00482} (2023).
+
+\bibitem{gao2022difformer}
+Gao, Z., Guo, J., Tan, X., Zhu, Y., Zhang, F., Bian, J., Xu, L. 
+Difformer: Empowering diffusion models on the embedding space for text generation. 
+\textit{arXiv preprint arXiv:2212.09412} (2022).
+
+\end{thebibliography}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+\clearpage % 强制换页，并输出所有未排版的图表
+\appendix
+\setcounter{table}{0}
+\section{Complete experimental data results}
+\label{Complete experimental results}
+
+\begin{table}[htbp]
+\centering
+\scriptsize
+\caption{Unedited symbolic expressions discovered for the Incompressible Navier-Stokes Equations across varying noise levels.}
+\label{tab:ns_full}
+\renewcommand{\arraystretch}{1.3} % 拉开行距，提升多行公式的可读性
+\begin{tabular}{c c c c p{8.5cm}}
+\toprule
+\textbf{Noise} & \textbf{MSE(Noise)} & \textbf{MSE(Original)} & \textbf{Type} & \textbf{Equation} \\
+\midrule
+
+\multirow{4}{*}{0.0\%} & \multirow{4}{*}{/} & \multirow{4}{*}{9.6899E-04}
+& Msg1  & -sin(t/(-6.233686) + y\_prev2) - 0.6374596 \\
+& & & Msg2  & (cos((-0.118906446 * t) - cos(x\_prev1 + 0.21283843)) - y\_prev2) * 0.6010129 \\
+& & & Node1 & sin(y - 1.5701683)*(ux + uy - sin(x))*cos(sin(t*(-0.1646834)) - 1*0.1230068)*0.9365822 \\
+& & & Node2 & ((sin(t * -0.13451573) + 1.6071377) * sin(y)) * ((cos(x) - 0.007157283) * -0.6139257) \\
+\midrule
+
+\multirow{4}{*}{0.1\%} & \multirow{4}{*}{6.2724E-04} & \multirow{4}{*}{6.2718E-04}
+& Msg1  & (-x\_prev2 + y\_prev1)*0.015265973 \\
+& & & Msg2  & 0.15940122 + (t - x\_prev2)*(-0.026457742) \\
+& & & Node1 & ((e0 * -0.0015770864) + 0.9900558) * x\_prev \\
+& & & Node2 & (0.9902582 - (e1 * 0.00073871564)) * y\_prev \\
+\midrule
+
+\multirow{4}{*}{0.5\%} & \multirow{4}{*}{6.3068E-04} & \multirow{4}{*}{6.2790E-04}
+& Msg1  & 0.23712291 + cos(-uy1 + x\_prev1 - y\_prev1)*(-0.21217735) \\
+& & & Msg2  & (uy1 + y\_prev1)*(-0.004990364) \\
+& & & Node1 & (e1 * -0.0046218093) - (x\_prev * -0.9900131) \\
+& & & Node2 & (e1 * 0.0029781198) + (y\_prev * 0.9900553) \\
+\midrule
+
+\multirow{4}{*}{1.0\%} & \multirow{4}{*}{6.5369E-04} & \multirow{4}{*}{6.4082E-04}
+& Msg1  & (-x\_prev1 + x\_prev2)*(-0.07927439) \\
+& & & Msg2  & (y\_prev2 / (t / -0.006975147)) + -0.0055887355 \\
+& & & Node1 & (x\_prev * 0.9897041) + (e0 * -0.011039681) \\
+& & & Node2 & ((e1 * -0.005140257) + y\_prev) * 0.9898316 \\
+\midrule
+
+\multirow{4}{*}{2.0\%} & \multirow{4}{*}{1.0362E-03} & \multirow{4}{*}{2.1334E-03}
+& Msg1  & (x\_prev1 - x\_prev2 + y\_prev1 - y\_prev2)*(-0.3086815) - 1*0.012407416 \\
+& & & Msg2  & (-0.4978986*x\_prev1 - (-0.5724906)*x\_prev2 + y\_prev1 - 1.0975764*y\_prev2)/2.5570834 \\
+& & & Node1 & (x\_prev * 0.9885945) - (e0 * -0.0075576548) \\
+& & & Node2 & ((e1 * -0.0038489283) + y\_prev) * 0.98886806 \\
+\midrule
+
+\multirow{4}{*}{5.0\%} & \multirow{4}{*}{6.1238E-03} & \multirow{4}{*}{6.8773E-03}
+& Msg1  & (-y\_prev2 + torch.sin(x\_prev1 - x\_prev2 + y\_prev1))*0.5179765 - 1*0.01374288 \\
+& & & Msg2  & (0.34813726 - uy1)*(-0.040036205) + (-x\_prev2 + y\_prev2 + (x\_prev1 - y\_prev1)*0.9260883)*(-0.5167467) \\
+& & & Node1 & e1 + (((x\_prev - e1) * 0.98433083) - (e0 * 0.019087898)) \\
+& & & Node2 & y\_prev - ((e0 + (y\_prev + torch.square(e1 + 0.27977818))) * 0.018425854) \\
+\midrule
+
+\multirow{4}{*}{10.0\%} & \multirow{4}{*}{3.9270E-02} & \multirow{4}{*}{3.9270E-02}
+& Msg1  & x\_prev2*0.34059486 + (x\_prev1 + y\_prev1*0.92205274 - y\_prev2)*(-0.27819878) - 1*0.008375836 \\
+& & & Msg2  & (-x\_prev1 + y\_prev1 + (x\_prev2 - y\_prev2 + 0.02801064)*1.1195679)*0.37756348 \\
+& & & Node1 & (e0*(-0.089349516) - x\_prev)*(-0.9576391) \\
+& & & Node2 & y\_prev + (x*0.37457064 - (-t - 1.8729712)*(-e0 + e1*2.0220585 + y\_prev) - 1*1.8696856)*(-0.010119061) \\
+
+\bottomrule
+\end{tabular}
+\end{table}
+
+\end{document}
+
+\endinput
+%%
+%% End of file `elsarticle-template-num.tex'.

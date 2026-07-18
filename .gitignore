@@ -4,8 +4,7 @@
 # HIT arrays and derived caches are several GB and are not suitable for Git.
 /data/
 
-# Superseded snapshots, supervisor-provided source material, and local tools.
-/_archive/
+# Supervisor-provided source material and local tools.
 /初始/
 /.claude/
 /.vscode/
@@ -63,18 +62,31 @@ venv/
 # LaTeX (keep .tex, figures, bibliography, and the final PDF)
 # -----------------------------------------------------------------------------
 /paper/out/
+/paper-v1/out/
 paper/*.aux
+paper-v1/*.aux
 paper/*.bbl
+paper-v1/*.bbl
 paper/*.blg
+paper-v1/*.blg
 paper/*.fdb_latexmk
+paper-v1/*.fdb_latexmk
 paper/*.fls
+paper-v1/*.fls
 paper/*.lof
+paper-v1/*.lof
 paper/*.lot
+paper-v1/*.lot
 paper/*.log
+paper-v1/*.log
 paper/*.out
+paper-v1/*.out
 paper/*.spl
+paper-v1/*.spl
 paper/*.synctex.gz
+paper-v1/*.synctex.gz
 paper/*.toc
+paper-v1/*.toc
 
 # -----------------------------------------------------------------------------
 # Editors and operating systems

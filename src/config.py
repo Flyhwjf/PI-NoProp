@@ -80,7 +80,7 @@ class PhysicsConfig:
     pressure_poisson_weight: float = 0.25
     physics_grid_size: int = 16
     use_full_ns: bool = False
-    discovered_artifact: str = 'outputs/spider/hit_full_ns_v2.json'
+    discovered_artifact: str = 'outputs/spider/full_ns_equation.json'
     dns_grid_size: int = 64
     box_length: float = 6.283185307179586
     snapshot_dt: float = 0.002

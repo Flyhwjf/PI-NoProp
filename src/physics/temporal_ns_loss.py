@@ -8,7 +8,7 @@ import numpy as np
 import torch
 import torch.nn as nn
 
-from src.spider_ns_v2 import NSSPIDERConfig, _profiles
+from src.spider_ns import NSSPIDERConfig, _profiles
 
 
 REQUIRED_TERMS = (

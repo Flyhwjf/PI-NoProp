@@ -168,10 +168,10 @@ all 100 trajectory-bootstrap refits recover the same support. The validated
 artifact enters each isolated NoProp objective through both a first-frame
 energy-rate condition and a frozen temporal field decoder. In matched
 three-seed experiments, discovered PI-NoProp reaches
-$81.79\pm2.98\%$ and $73.41\pm8.45\%$ trajectory-disjoint accuracy in the
-low- and high-enstrophy groups, versus $20.37\pm6.07\%$ and
-$19.44\pm5.99\%$ without the equation. It also reduces the common full-NS
-residual by 40.6\% and 44.4\%. The resulting pipeline provides an auditable
+$86.73\pm2.14\%$ and $82.94\pm3.00\%$ trajectory-disjoint accuracy in the
+low- and high-enstrophy groups, versus $17.59\pm4.90\%$ and
+$17.46\pm1.82\%$ without the equation. It also reduces the common full-NS
+residual by 24.8\% and 63.5\%. The resulting pipeline provides an auditable
 path from full governing-equation discovery to accurate strictly local neural
 learning.
 \end{abstract}
@@ -235,7 +235,7 @@ The main contributions of this work are threefold:
     persist all split, support, bootstrap and coefficient provenance.
     \item We introduce a coefficient-conditioned 3-D encoder, a frozen temporal
     physics decoder and a strictly local full-NS loss. Matched three-seed
-    experiments show a 53--61 percentage-point accuracy gain over the
+    experiments show a 65--69 percentage-point accuracy gain over the
     no-equation ablation while automated tests verify gradient locality.
 \end{itemize}
 
@@ -339,11 +339,11 @@ We present the proposed PI-NoProp framework, which integrates a SPIDER-discovere
 
 \begin{figure}[htbp]
 \centering
-\includegraphics[width=\textwidth]{figures/fig_v2_framework.png}
+\includegraphics[width=\textwidth]{figures/fig_framework.png}
 \caption{Full-NS PI-NoProp pipeline. Independent decaying-HIT trajectories are
 split before weak-feature construction. SPIDER selects and validates a complete
-momentum equation, whose measured coefficients are loaded by a frozen temporal
-field decoder in each strictly local NoProp objective.}
+momentum equation, whose measured coefficients enter a pretrained physical
+condition and the temporal-field loss in each strictly local NoProp objective.}
 \label{fig:framework-overview}
 \end{figure}
 
@@ -542,11 +542,11 @@ has exactly the training marginal at $\gamma_{t+1}$. Hence block zero sees pure
 noise in both training and inference, and the last block reaches a clean target
 embedding. An automated marginal-consistency test checks this identity.
 
-At each mini-batch we sample $J\sim\mathrm{Uniform}\{1,\ldots,T\}$ and optimise $T(\mathcal{L}_{\mathrm{diff}}^{(J)}+\lambda\mathcal{L}_{\mathrm{phys}}^{(J)})$. This is an unbiased estimator of Eq.~\eqref{eq:total-loss}. Block $J$ has its own optimiser; all other blocks receive no gradient. The encoder, label embedding, and decoder are pretrained once and frozen. After local training, the classifier is trained on $z_T$ detached from every block, so its loss cannot propagate into the local learners.
+At each mini-batch we sample $J\sim\mathrm{Uniform}\{1,\ldots,T\}$ and optimise $T(\mathcal{L}_{\mathrm{diff}}^{(J)}+\lambda\mathcal{L}_{\mathrm{phys}}^{(J)})$. This is an unbiased estimator of Eq.~\eqref{eq:total-loss}. Block $J$ has its own optimiser; all other blocks receive no gradient. The spatial encoder, physical-rate encoder, fusion layer, label embedding, and decoder are pretrained once and frozen. After local training, the classifier is trained on $z_T$ detached from every block, so its loss cannot propagate into the local learners.
 
 \begin{figure}[htbp]
 \centering
-\includegraphics[width=\textwidth]{figures/fig_v2_local_training.png}
+\includegraphics[width=\textwidth]{figures/fig_local_training.png}
 \caption{Strictly local full-NS update. A sampled block receives the frozen
 3-D and equation-rate condition together with target features; its nine-frame decoded field enters the local
 diffusion-plus-physics objective. Independent optimizers and detached
@@ -606,7 +606,9 @@ converted back to physical units before residual evaluation.
 widths 16, 32 and 64 precede $2^3$ adaptive pooling and a 128-dimensional
 projection. A two-layer 32-unit MLP embeds the standardised scalar in
 Eq.~\eqref{eq:energy-rate-condition}; a linear fusion returns the
-128-dimensional frozen condition. This replaces direct coarse average pooling,
+128-dimensional condition. The spatial encoder, physical-rate MLP and fusion
+layer are jointly optimised during supervised condition pretraining and then
+frozen before local block updates. This replaces direct coarse average pooling,
 which cannot preserve the derivative-sensitive energy balance.
 
 \textbf{Training.} We use $T=10$ independently optimised blocks, AdamW with
@@ -640,7 +642,7 @@ energy decreases monotonically, and the 16-frame energy drop lies between
 
 \begin{figure}[htbp]
 \centering
-\includegraphics[width=\textwidth]{figures/fig_v2_dns_quality.png}
+\includegraphics[width=\textwidth]{figures/fig_dns_quality.png}
 \caption{DNS quality audit over all 15 independent trajectories. Every
 trajectory exhibits monotone kinetic-energy decay, machine-precision
 incompressibility, and a CFL number far below the prespecified 0.5 limit.}
@@ -707,7 +709,7 @@ High enstrophy & 90.63 & 92.31 & 84.52 & 95.24 & 0.9961 \\
 
 \begin{figure}[htbp]
 \centering
-\includegraphics[width=0.90\textwidth]{figures/fig_v2_data_samples.png}
+\includegraphics[width=0.90\textwidth]{figures/fig_data_samples.png}
 \caption{Orthogonal streamwise-velocity slices from representative low- and
 high-enstrophy learning crops. Both rows use one common physical colour scale;
 the group names denote local vorticity strata, not geometric position.}
@@ -730,7 +732,7 @@ scale, candidate support, coefficient, residual and bootstrap diagnostic.
 
 \begin{figure}[htbp]
 \centering
-\includegraphics[width=\textwidth]{figures/fig_v2_spider.png}
+\includegraphics[width=\textwidth]{figures/fig_spider.png}
 \caption{Full momentum-equation discovery. Left: SPIDER coefficients relative
 to DNS truth, with measured values annotated. Right: independent weak
 residuals; the next-best support is separated from the accepted support by a
@@ -807,21 +809,21 @@ Method & \multicolumn{3}{c}{Low enstrophy} & \multicolumn{3}{c}{High enstrophy}\
 & Accuracy $\uparrow$ & $\eta_{\mathrm{div}}\downarrow$ & $\eta_{\mathrm{NS}}\downarrow$
 & Accuracy $\uparrow$ & $\eta_{\mathrm{div}}\downarrow$ & $\eta_{\mathrm{NS}}\downarrow$\\
 \midrule
-No physics & $20.37\pm6.07$ & $0.344\pm0.228$ & $0.753\pm0.063$
-           & $19.44\pm5.99$ & $0.366\pm0.236$ & $0.634\pm0.240$\\
-Analytic NS & $81.17\pm3.51$ & $\mathbf{0.203\pm0.030}$ & $\mathbf{0.432\pm0.201}$
-            & $\mathbf{73.81\pm7.81}$ & $0.211\pm0.054$ & $0.371\pm0.130$\\
-PI-NoProp (discovered NS) & $\mathbf{81.79\pm2.98}$ & $0.220\pm0.035$ & $0.447\pm0.257$
-                          & $73.41\pm8.45$ & $\mathbf{0.120\pm0.034}$ & $\mathbf{0.352\pm0.074}$\\
+No physics & $17.59\pm4.90$ & $0.293\pm0.178$ & $0.574\pm0.221$
+           & $17.46\pm1.82$ & $0.399\pm0.171$ & $0.753\pm0.125$\\
+Analytic NS & $86.42\pm1.93$ & $0.214\pm0.094$ & $\mathbf{0.377\pm0.150}$
+            & $\mathbf{82.94\pm1.82}$ & $0.176\pm0.020$ & $0.297\pm0.010$\\
+PI-NoProp (discovered NS) & $\mathbf{86.73\pm2.14}$ & $\mathbf{0.139\pm0.026}$ & $0.432\pm0.107$
+                          & $\mathbf{82.94\pm3.00}$ & $\mathbf{0.164\pm0.045}$ & $\mathbf{0.274\pm0.043}$\\
 \bottomrule
 \end{tabular}}
 \end{table}
 
-The discovered equation raises mean test accuracy from 20.37\% to 81.79\% in
-the low-enstrophy group and from 19.44\% to 73.41\% in the high-enstrophy group,
-gains of 61.42 and 53.97 percentage points. It simultaneously reduces the
-common full-NS residual by 40.6\% and 44.4\%, and continuity residuals by
-36.0\% and 67.3\%. The analytic and discovered variants have similar accuracy,
+The discovered equation raises mean test accuracy from 17.59\% to 86.73\% in
+the low-enstrophy group and from 17.46\% to 82.94\% in the high-enstrophy group,
+gains of 69.14 and 65.48 percentage points. It simultaneously reduces the
+common full-NS residual by 24.8\% and 63.5\%, and continuity residuals by
+52.6\% and 58.9\%. The analytic and discovered variants have similar accuracy,
 as expected from their sub-percent coefficient difference. The discovered
 variant gives the best high-enstrophy physical consistency, while the analytic
 variant is marginally lower in the two low-enstrophy residual means.
@@ -834,7 +836,7 @@ the independently trained denoising chain.
 
 \begin{figure}[htbp]
 \centering
-\includegraphics[width=\textwidth]{figures/fig_v2_main_results.png}
+\includegraphics[width=\textwidth]{figures/fig_main_results.png}
 \caption{Matched three-seed comparison. Error bars are sample standard
 deviations. Full-NS and continuity residuals improve strongly under both
 physical objectives, and equation conditioning raises trajectory-disjoint
@@ -867,10 +869,10 @@ decoded-field NS residual is not defined.}
 Method & Accuracy (\%) & $\eta_{\mathrm{NS}}$ & Accuracy (\%) & $\eta_{\mathrm{NS}}$ \\
 \midrule
 CNN (BP) & $14.81\pm1.85$ & -- & $17.06\pm5.63$ & -- \\
-NoProp (vanilla) & $20.37\pm6.07$ & $0.753\pm0.063$ & $19.44\pm5.99$ & $0.634\pm0.240$ \\
+NoProp (vanilla) & $17.59\pm4.90$ & $0.574\pm0.221$ & $17.46\pm1.82$ & $0.753\pm0.125$ \\
 Global physics-informed BP & $80.86\pm5.27$ & $0.998\pm0.001$ & $71.03\pm6.87$ & $0.991\pm0.005$ \\
 SPIDER rate + classifier & $\mathbf{87.96\pm0.00}$ & -- & $\mathbf{84.52\pm0.00}$ & -- \\
-PI-NoProp (discovered NS) & $81.79\pm2.98$ & $\mathbf{0.447\pm0.257}$ & $73.41\pm8.45$ & $\mathbf{0.352\pm0.074}$ \\
+PI-NoProp (discovered NS) & $86.73\pm2.14$ & $\mathbf{0.432\pm0.107}$ & $82.94\pm3.00$ & $\mathbf{0.274\pm0.043}$ \\
 \bottomrule
 \end{tabular}}
 \end{table}
@@ -904,18 +906,18 @@ weak residuals successively while preserving the local optimisation protocol.
 \toprule
 Variant & Accuracy (\%) & $\eta_{\mathrm{NS}}$ & $\eta_{\mathrm{PP}}$ & $\eta_{\mathrm{energy}}$ \\
 \midrule
-NS + continuity & $81.79\pm1.07$ & $0.473\pm0.250$ & $0.803\pm0.123$ & $0.568\pm0.268$ \\
-NS + continuity + PP & $82.41\pm1.60$ & $0.496\pm0.292$ & $0.511\pm0.226$ & $0.612\pm0.200$ \\
-Full transferred set & $\mathbf{83.02\pm1.41}$ & $\mathbf{0.463\pm0.261}$ & $\mathbf{0.421\pm0.077}$ & $\mathbf{0.437\pm0.281}$ \\
+NS + continuity & $87.04\pm1.85$ & $0.471\pm0.105$ & $0.777\pm0.093$ & $0.512\pm0.029$ \\
+NS + continuity + PP & $\mathbf{87.35\pm1.93}$ & $0.375\pm0.076$ & $0.322\pm0.104$ & $0.450\pm0.008$ \\
+Full transferred set & $86.73\pm1.93$ & $\mathbf{0.372\pm0.063}$ & $\mathbf{0.251\pm0.074}$ & $\mathbf{0.351\pm0.092}$ \\
 \bottomrule
 \end{tabular}}
 \end{table}
 
-Pressure--Poisson enforcement lowers its corresponding residual by 36.4\%.
-The full set lowers pressure--Poisson and energy residuals by 47.6\% and 23.1\%
-relative to NS plus continuity, while raising mean accuracy by 1.23 percentage
-points. Thus the extra balances improve their intended diagnostics without an
-accuracy penalty.
+Pressure--Poisson enforcement lowers its corresponding residual by 58.5\%.
+The full set lowers pressure--Poisson and energy residuals by 67.8\% and 31.5\%
+relative to NS plus continuity, while its mean accuracy differs by only
+$-0.31$ percentage points. Thus the extra balances primarily improve their
+intended diagnostics rather than classification.
 
 \subsection{Noise Robustness}
 \label{sec:noise-robustness}
@@ -935,10 +937,10 @@ five noise realisations for each of three trained seeds.
 \toprule
 Region & Method & $\sigma=0$ & $\sigma=0.1$ & $\sigma=0.5$ & $\sigma=1.0$ \\
 \midrule
-Low & Vanilla & $19.88\pm5.32$ & $19.81\pm5.19$ & $20.31\pm5.36$ & $21.48\pm5.67$ \\
-Low & Discovered PI & $77.04\pm1.21$ & $76.73\pm1.78$ & $23.70\pm0.64$ & $16.36\pm0.39$ \\
-High & Vanilla & $17.78\pm3.94$ & $17.78\pm4.08$ & $18.10\pm4.41$ & $18.81\pm4.17$ \\
-High & Discovered PI & $68.49\pm8.55$ & $69.13\pm7.42$ & $34.05\pm0.63$ & $19.52\pm0.48$ \\
+Low & Vanilla & $18.77\pm4.22$ & $18.95\pm3.90$ & $19.07\pm4.17$ & $19.44\pm4.38$ \\
+Low & Discovered PI & $78.70\pm0.85$ & $79.81\pm0.19$ & $22.90\pm0.28$ & $16.05\pm0.28$ \\
+High & Vanilla & $18.73\pm1.22$ & $18.57\pm0.82$ & $18.10\pm0.82$ & $17.70\pm1.22$ \\
+High & Discovered PI & $74.37\pm0.84$ & $73.81\pm0.95$ & $34.29\pm0.95$ & $19.37\pm0.36$ \\
 \bottomrule
 \end{tabular}}
 \end{table}
@@ -950,7 +952,7 @@ does not provide a meaningful robustness reference above chance.
 
 \begin{figure}[htbp]
 \centering
-\includegraphics[width=0.92\textwidth]{figures/fig_v3_noise.png}
+\includegraphics[width=0.92\textwidth]{figures/fig_noise.png}
 \caption{Clean-trained noise sweep. PI-NoProp retains accuracy at 10\% of a
 channel standard deviation but degrades at larger noise. A falling decoded
 residual at high noise does not indicate better prediction; it reflects latent
@@ -1001,23 +1003,23 @@ pretraining and detached-classifier training are excluded.}
 & \multicolumn{2}{c}{Time (s)} & \multicolumn{2}{c}{Peak memory (MB)}\\
 Method & Low & High & Low & High\\
 \midrule
-No physics & 16.0 & 14.4 & 219 & 219\\
-Analytic NS & 29.6 & 29.3 & 302 & 302\\
-Discovered NS & 29.7 & 29.6 & 302 & 302\\
+No physics & 12.3 & 13.8 & 222 & 222\\
+Analytic NS & 33.5 & 34.2 & 304 & 303\\
+Discovered NS & 33.7 & 33.5 & 304 & 303\\
 \bottomrule
 \end{tabular}
 \end{table}
 
 \begin{figure}[htbp]
 \centering
-\includegraphics[width=0.82\textwidth]{figures/fig_v2_efficiency.png}
+\includegraphics[width=0.82\textwidth]{figures/fig_efficiency.png}
 \caption{Local block time and peak allocated GPU memory for the corrected
 comparison. Full spatiotemporal physics roughly doubles block time but remains
 a seconds-scale phase on an 8\,GB consumer GPU.}
 \label{fig:v2-efficiency}
 \end{figure}
 
-The temporal weak loss adds approximately 14 seconds to 1000 local updates.
+The temporal weak loss adds approximately 21 seconds to 1000 local updates.
 Peak allocation remains near 0.30\,GB. Independent optimizers, one sampled block
 per update, mixed precision and a compact $16^3$ decoder retain the central
 computational benefit of local NoProp training.
@@ -1074,18 +1076,18 @@ $9.70\times10^{-4}$, is separated 40.6-fold from the next candidate, and is
 selected in every trajectory-bootstrap refit. These diagnostics make the
 equation provenance explicit before neural optimisation begins.
 
-Matched three-seed experiments show $81.79\pm2.98\%$ and
-$73.41\pm8.45\%$ discovered PI-NoProp accuracy in low- and high-enstrophy
-groups, compared with $20.37\pm6.07\%$ and $19.44\pm5.99\%$ without the
-equation. The common full-NS residual also falls by 40.6\% and 44.4\%.
+Matched three-seed experiments show $86.73\pm2.14\%$ and
+$82.94\pm3.00\%$ discovered PI-NoProp accuracy in low- and high-enstrophy
+groups, compared with $17.59\pm4.90\%$ and $17.46\pm1.82\%$ without the
+equation. The common full-NS residual also falls by 24.8\% and 63.5\%.
 Gradient tests verify strict block isolation and schedule-consistent marginals,
-while the full temporal physics phase completes in approximately 30 seconds
+while the full temporal physics phase completes in approximately 34 seconds
 with about 0.30\,GB peak allocation on an RTX~4060 Laptop GPU.
 
 Expanded experiments compare five learning methods, four observation-noise
-levels and three transferred-relation sets. The full set raises low-enstrophy
-accuracy to $83.02\pm1.41\%$ while reducing pressure--Poisson and energy
-residuals relative to momentum plus continuity alone. The noise audit supports
+levels and three transferred-relation sets. The full set retains
+$86.73\pm1.93\%$ low-enstrophy accuracy while reducing pressure--Poisson and
+energy residuals relative to momentum plus continuity alone. The noise audit supports
 10\% perturbations but rejects quantitative equation recovery at larger noise,
 making the robustness boundary explicit rather than inheriting the initial
 manuscript's unverified extreme-noise claim.

@@ -3,16 +3,16 @@ import os, re
 with open('paper/Physics-Informed NoProp.tex', 'r', encoding='utf-8') as f:
     content = f.read()
 
-# Guard against restoring claims from the archived single-snapshot v1 study.
+# Guard against restoring superseded single-snapshot claims.
 forbidden = ('0.2929985', '60 archived', '80 archived',
              'PI-NoProp (SPIDER)', 'fig_spider_discovery.png',
              'Dataset: Johns Hopkins Turbulence Database')
 present = [token for token in forbidden if token.lower() in content.lower()]
-assert not present, f'Manuscript retains superseded v1 content: {present}'
+assert not present, f'Manuscript retains superseded content: {present}'
 required = ('1.003459', '0.00501841', 'trajectory-bootstrap',
-            'fig_v2_spider.png', 'fig_v2_main_results.png')
+            'fig_spider.png', 'fig_main_results.png')
 missing = [token for token in required if token not in content]
-assert not missing, f'Manuscript is missing v2 evidence: {missing}'
+assert not missing, f'Manuscript is missing current evidence: {missing}'
 
 # Check all referenced figure files exist
 refs = re.findall(r'\\includegraphics(?:\[[^]]*\])?\{([^}]+)\}', content)

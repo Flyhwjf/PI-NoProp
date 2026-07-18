@@ -90,6 +90,9 @@ class TestTemporalNSLoss(unittest.TestCase):
             decoder = TemporalPhysicsDecoder(
                 latent_dim=12, base_channels=8, n_time=7)
             trainer = LocalNoPropTrainer(model, decoder, loss_module, config)
+            for module in (model.physics_encoder, model.condition_fusion):
+                self.assertTrue(all(not parameter.requires_grad
+                                    for parameter in module.parameters()))
             batch = {
                 'field': torch.randn(2, 4, 16, 16, 16),
                 'sequence': torch.randn(2, 7, 4, 16, 16, 16),
@@ -101,10 +104,10 @@ class TestTemporalNSLoss(unittest.TestCase):
                 gradients = [parameter.grad for parameter in block.parameters()]
                 self.assertEqual(any(value is not None for value in gradients), index == 2)
 
-    def test_v2_cache_has_trajectory_disjoint_splits(self):
-        root = Path('data/cache_hit_ns_v2')
+    def test_cache_has_trajectory_disjoint_splits(self):
+        root = Path('data/cache_hit_ns')
         if not (root/'trajectory_ids.npy').exists():
-            self.skipTest('formal v2 cache has not been built')
+            self.skipTest('formal cache has not been built')
         trajectory_ids = np.load(root/'trajectory_ids.npy')
         splits = np.load(root/'splits.npy')
         groups = [set(trajectory_ids[splits == code].tolist()) for code in range(3)]

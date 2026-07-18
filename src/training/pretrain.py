@@ -10,6 +10,11 @@ import torch.nn as nn
 import torch.nn.functional as F
 
 
+def _condition_modules(model):
+    """Shared modules that turn fields and equation rates into a condition."""
+    return (model.encoder, model.physics_encoder, model.condition_fusion)
+
+
 def _field(batch, device):
     value = batch.get('field')
     if value is None:
@@ -47,14 +52,17 @@ def pretrain_encoder(model, dataloader, config, epochs=None, val_loader=None,
     device = torch.device(config.device)
     epochs = int(epochs or config.training.classifier_epochs)
     head = nn.Linear(config.noprop.condition_dim, config.data.n_classes).to(device)
-    for parameter in model.encoder.parameters():
-        parameter.requires_grad_(True)
+    condition_modules = _condition_modules(model)
+    for module in condition_modules:
+        module.train()
+        for parameter in module.parameters():
+            parameter.requires_grad_(True)
     optimizer = torch.optim.AdamW(
-        list(model.encoder.parameters()) + list(head.parameters()),
+        [parameter for module in condition_modules for parameter in module.parameters()]
+        + list(head.parameters()),
         lr=config.training.lr, weight_decay=config.training.weight_decay)
     scaler = torch.amp.GradScaler('cuda', enabled=(config.training.use_amp
                                                    and device.type == 'cuda'))
-    model.encoder.train()
     best_state = None
     best_accuracy = -1.0
     stale_epochs = 0
@@ -75,7 +83,8 @@ def pretrain_encoder(model, dataloader, config, epochs=None, val_loader=None,
         train_accuracy = 100 * correct / max(total, 1)
         val_accuracy = train_accuracy
         if val_loader is not None:
-            model.encoder.eval()
+            for module in condition_modules:
+                module.eval()
             head.eval()
             val_correct = val_total = 0
             with torch.no_grad():
@@ -87,12 +96,17 @@ def pretrain_encoder(model, dataloader, config, epochs=None, val_loader=None,
                     val_correct += int((logits.argmax(-1) == labels).sum())
                     val_total += labels.shape[0]
             val_accuracy = 100 * val_correct / max(val_total, 1)
-            model.encoder.train()
+            for module in condition_modules:
+                module.train()
             head.train()
         if val_accuracy > best_accuracy:
             best_accuracy = val_accuracy
-            best_state = (copy.deepcopy(model.encoder.state_dict()),
-                          copy.deepcopy(head.state_dict()))
+            best_state = {
+                'encoder': copy.deepcopy(model.encoder.state_dict()),
+                'physics_encoder': copy.deepcopy(model.physics_encoder.state_dict()),
+                'condition_fusion': copy.deepcopy(model.condition_fusion.state_dict()),
+                'head': copy.deepcopy(head.state_dict()),
+            }
             stale_epochs = 0
         else:
             stale_epochs += 1
@@ -103,8 +117,10 @@ def pretrain_encoder(model, dataloader, config, epochs=None, val_loader=None,
             print(f'encoder early stop at {epoch+1}; best val={best_accuracy:.1f}%')
             break
     if best_state is not None:
-        model.encoder.load_state_dict(best_state[0])
-        head.load_state_dict(best_state[1])
+        model.encoder.load_state_dict(best_state['encoder'])
+        model.physics_encoder.load_state_dict(best_state['physics_encoder'])
+        model.condition_fusion.load_state_dict(best_state['condition_fusion'])
+        head.load_state_dict(best_state['head'])
     return head
 
 
@@ -112,7 +128,8 @@ def pretrain_encoder(model, dataloader, config, epochs=None, val_loader=None,
 def align_label_embeddings_to_encoder(model, dataloader, config):
     """Set each target embedding to its encoder-feature class centroid."""
     device = torch.device(config.device)
-    model.encoder.eval()
+    for module in _condition_modules(model):
+        module.eval()
     sums = torch.zeros(config.data.n_classes, config.noprop.embedding_dim,
                        device=device)
     counts = torch.zeros(config.data.n_classes, device=device)
@@ -136,9 +153,10 @@ def pretrain_decoder(model, decoder, dataloader, config, epochs=None):
     """Pretrain a field auto-decoder on frozen encoder features."""
     device = torch.device(config.device)
     epochs = int(epochs or config.training.n_pretrain_epochs)
-    model.encoder.eval()
-    for parameter in model.encoder.parameters():
-        parameter.requires_grad_(False)
+    for module in _condition_modules(model):
+        module.eval()
+        for parameter in module.parameters():
+            parameter.requires_grad_(False)
     model.label_embed.eval()
     for parameter in model.label_embed.parameters():
         parameter.requires_grad_(False)
@@ -182,7 +200,10 @@ def save_shared_components(model, decoder, path):
     path = Path(path)
     path.parent.mkdir(parents=True, exist_ok=True)
     torch.save({
+        'schema_version': 2,
         'encoder': model.encoder.state_dict(),
+        'physics_encoder': model.physics_encoder.state_dict(),
+        'condition_fusion': model.condition_fusion.state_dict(),
         'label_embed': model.label_embed.state_dict(),
         'decoder': decoder.state_dict(),
     }, path)
@@ -190,6 +211,15 @@ def save_shared_components(model, decoder, path):
 
 def load_shared_components(model, decoder, path, device):
     checkpoint = torch.load(path, map_location=device, weights_only=True)
+    required = {'encoder', 'physics_encoder', 'condition_fusion',
+                'label_embed', 'decoder'}
+    missing = sorted(required-checkpoint.keys())
+    if missing:
+        raise ValueError(
+            f'Legacy shared checkpoint {path} lacks trainable-condition state: '
+            f'{missing}. Rebuild it with the v4 pipeline.')
     model.encoder.load_state_dict(checkpoint['encoder'])
+    model.physics_encoder.load_state_dict(checkpoint['physics_encoder'])
+    model.condition_fusion.load_state_dict(checkpoint['condition_fusion'])
     model.label_embed.load_state_dict(checkpoint['label_embed'])
     decoder.load_state_dict(checkpoint['decoder'])

@@ -62,7 +62,9 @@ class LocalNoPropTrainer:
         self._freeze_shared_modules()
 
     def _freeze_shared_modules(self):
-        for module in (self.model.encoder, self.model.label_embed, self.decoder):
+        for module in (self.model.encoder, self.model.physics_encoder,
+                       self.model.condition_fusion, self.model.label_embed,
+                       self.decoder):
             module.eval()
             for parameter in module.parameters():
                 parameter.requires_grad_(False)
