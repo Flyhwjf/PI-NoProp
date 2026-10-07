@@ -1,0 +1,333 @@
+{
+  "schema_version": 4,
+  "protocol": {
+    "seeds": [
+      42,
+      123,
+      456
+    ],
+    "regions": [
+      "low_enstrophy",
+      "high_enstrophy"
+    ],
+    "methods": [
+      "none",
+      "analytic",
+      "discovered"
+    ],
+    "trajectory_disjoint": true,
+    "target": "future local relative kinetic-energy decay quantile",
+    "steps_per_block": 100,
+    "input_spatial_size": 32,
+    "target_spatial_size": 16,
+    "spatial_context_mode": "dual_scale",
+    "model_revision": "cached-dual-scale-physics-condition-prototype-readout",
+    "readout": "cosine similarity to frozen label embeddings"
+  },
+  "results": {
+    "low_enstrophy": {
+      "none": {
+        "accuracy": {
+          "values": [
+            21.296296296296298,
+            19.444444444444443,
+            23.14814814814815
+          ],
+          "mean": 21.296296296296294,
+          "std": 1.851851851851853
+        },
+        "eta_ns": {
+          "values": [
+            0.5506613552570343,
+            0.7137379199266434,
+            0.8749635219573975
+          ],
+          "mean": 0.7131209323803583,
+          "std": 0.16215196371571247
+        },
+        "eta_div": {
+          "values": [
+            0.2494807206094265,
+            0.522986389696598,
+            0.20435935258865356
+          ],
+          "mean": 0.3256088209648927,
+          "std": 0.1724163940634585
+        },
+        "block_seconds": {
+          "values": [
+            17.555736700014677,
+            17.873051100003067,
+            16.967209900030866
+          ],
+          "mean": 17.46533256668287
+        },
+        "peak_memory_mb": {
+          "values": [
+            244.38818359375,
+            244.38818359375,
+            244.38818359375
+          ],
+          "mean": 244.38818359375
+        },
+        "run_ids": [
+          "PI-NoProp-full_ns_v5_input32_target16_dual_scale:42",
+          "PI-NoProp-full_ns_v5_input32_target16_dual_scale:123",
+          "PI-NoProp-full_ns_v5_input32_target16_dual_scale:456"
+        ]
+      },
+      "analytic": {
+        "accuracy": {
+          "values": [
+            89.81481481481481,
+            87.03703703703704,
+            86.11111111111111
+          ],
+          "mean": 87.65432098765432,
+          "std": 1.9274685180241926
+        },
+        "eta_ns": {
+          "values": [
+            0.391845278441906,
+            0.4630255252122879,
+            0.7745678871870041
+          ],
+          "mean": 0.5431462302803993,
+          "std": 0.20355255917482795
+        },
+        "eta_div": {
+          "values": [
+            0.3099633604288101,
+            0.20962470024824142,
+            0.23109490051865578
+          ],
+          "mean": 0.2502276537319024,
+          "std": 0.05283472689289839
+        },
+        "block_seconds": {
+          "values": [
+            27.03468939999584,
+            27.230489299981855,
+            26.94393880001735
+          ],
+          "mean": 27.069705833331682
+        },
+        "peak_memory_mb": {
+          "values": [
+            267.05810546875,
+            267.05810546875,
+            267.05810546875
+          ],
+          "mean": 267.05810546875
+        },
+        "run_ids": [
+          "PI-NoProp-full_ns_v5_input32_target16_dual_scale:42",
+          "PI-NoProp-full_ns_v5_input32_target16_dual_scale:123",
+          "PI-NoProp-full_ns_v5_input32_target16_dual_scale:456"
+        ]
+      },
+      "discovered": {
+        "accuracy": {
+          "values": [
+            87.96296296296296,
+            85.18518518518519,
+            85.18518518518519
+          ],
+          "mean": 86.11111111111113,
+          "std": 1.6037507477489568
+        },
+        "eta_ns": {
+          "values": [
+            0.3266119062900543,
+            0.518232136964798,
+            0.6916465312242508
+          ],
+          "mean": 0.5121635248263677,
+          "std": 0.1825929636929567
+        },
+        "eta_div": {
+          "values": [
+            0.19487329199910164,
+            0.27643609046936035,
+            0.31212063133716583
+          ],
+          "mean": 0.2611433379352093,
+          "std": 0.0601010470417686
+        },
+        "block_seconds": {
+          "values": [
+            27.410010799998417,
+            27.014088600000832,
+            26.99217599997064
+          ],
+          "mean": 27.13875846665663
+        },
+        "peak_memory_mb": {
+          "values": [
+            262.44482421875,
+            267.05810546875,
+            267.05810546875
+          ],
+          "mean": 265.5203450520833
+        },
+        "run_ids": [
+          "PI-NoProp-full_ns_v5_input32_target16_dual_scale:42",
+          "PI-NoProp-full_ns_v5_input32_target16_dual_scale:123",
+          "PI-NoProp-full_ns_v5_input32_target16_dual_scale:456"
+        ]
+      }
+    },
+    "high_enstrophy": {
+      "none": {
+        "accuracy": {
+          "values": [
+            15.476190476190476,
+            17.857142857142858,
+            15.476190476190476
+          ],
+          "mean": 16.26984126984127,
+          "std": 1.3746434980705378
+        },
+        "eta_ns": {
+          "values": [
+            0.5719196597735087,
+            0.6503299872080485,
+            0.7421868244806925
+          ],
+          "mean": 0.6548121571540833,
+          "std": 0.0852220290178817
+        },
+        "eta_div": {
+          "values": [
+            0.2654145359992981,
+            0.24478998283545175,
+            0.0630840336283048
+          ],
+          "mean": 0.19109618415435156,
+          "std": 0.11134036132521538
+        },
+        "block_seconds": {
+          "values": [
+            17.903913700021803,
+            17.932415799994487,
+            17.83882960001938
+          ],
+          "mean": 17.89171970001189
+        },
+        "peak_memory_mb": {
+          "values": [
+            244.388671875,
+            244.388671875,
+            244.388671875
+          ],
+          "mean": 244.388671875
+        },
+        "run_ids": [
+          "PI-NoProp-full_ns_v5_input32_target16_dual_scale:42",
+          "PI-NoProp-full_ns_v5_input32_target16_dual_scale:123",
+          "PI-NoProp-full_ns_v5_input32_target16_dual_scale:456"
+        ]
+      },
+      "analytic": {
+        "accuracy": {
+          "values": [
+            82.14285714285714,
+            77.38095238095238,
+            76.19047619047619
+          ],
+          "mean": 78.57142857142857,
+          "std": 3.1497039417435584
+        },
+        "eta_ns": {
+          "values": [
+            0.2531781842311223,
+            0.28028971950213116,
+            0.41632652282714844
+          ],
+          "mean": 0.31659814218680066,
+          "std": 0.08742466050861943
+        },
+        "eta_div": {
+          "values": [
+            0.1489055057366689,
+            0.15089407563209534,
+            0.1226236696044604
+          ],
+          "mean": 0.14080775032440823,
+          "std": 0.015779233070064985
+        },
+        "block_seconds": {
+          "values": [
+            27.51722040004097,
+            27.172277700039558,
+            26.980800699966494
+          ],
+          "mean": 27.223432933349006
+        },
+        "peak_memory_mb": {
+          "values": [
+            267.05859375,
+            267.05859375,
+            267.05859375
+          ],
+          "mean": 267.05859375
+        },
+        "run_ids": [
+          "PI-NoProp-full_ns_v5_input32_target16_dual_scale:42",
+          "PI-NoProp-full_ns_v5_input32_target16_dual_scale:123",
+          "PI-NoProp-full_ns_v5_input32_target16_dual_scale:456"
+        ]
+      },
+      "discovered": {
+        "accuracy": {
+          "values": [
+            80.95238095238095,
+            77.38095238095238,
+            77.38095238095238
+          ],
+          "mean": 78.57142857142857,
+          "std": 2.061965247105805
+        },
+        "eta_ns": {
+          "values": [
+            0.2532268563906352,
+            0.288383146127065,
+            0.34508630633354187
+          ],
+          "mean": 0.2955654362837474,
+          "std": 0.04634898709653132
+        },
+        "eta_div": {
+          "values": [
+            0.14442747831344604,
+            0.1210498958826065,
+            0.23566195368766785
+          ],
+          "mean": 0.1670464426279068,
+          "std": 0.060561490310029664
+        },
+        "block_seconds": {
+          "values": [
+            27.265829299984034,
+            27.104633099981584,
+            27.085130400024354
+          ],
+          "mean": 27.151864266663324
+        },
+        "peak_memory_mb": {
+          "values": [
+            267.05859375,
+            267.05859375,
+            267.05859375
+          ],
+          "mean": 267.05859375
+        },
+        "run_ids": [
+          "PI-NoProp-full_ns_v5_input32_target16_dual_scale:42",
+          "PI-NoProp-full_ns_v5_input32_target16_dual_scale:123",
+          "PI-NoProp-full_ns_v5_input32_target16_dual_scale:456"
+        ]
+      }
+    }
+  }
+}

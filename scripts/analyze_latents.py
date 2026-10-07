@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import json
+import argparse
 import sys
 from pathlib import Path
 
@@ -16,6 +17,8 @@ sys.path.insert(0, str(ROOT))
 
 from src.data.hit_dataset import create_hit_dataloaders
 from src.noprop.model import NoPropModel
+from scripts.experiment_protocol import (ExperimentProtocol, add_protocol_arguments,
+                                        load_run, protocol_from_args)
 
 SEEDS = (42, 123, 456)
 REGIONS = ('low_enstrophy', 'high_enstrophy')
@@ -23,20 +26,17 @@ METHODS = (('none', 'No equation'), ('analytic', 'Analytic NS'),
            ('discovered', 'PI-NoProp'))
 
 
-def run_dir(method, region, seed):
-    weight = '0' if method == 'none' else '0p01'
-    return ROOT/'outputs/runs'/f'full_ns_v4_{method}_{region}_lambda{weight}_seed{seed}'
+def run_dir(method, region, seed, protocol=None):
+    protocol = protocol or ExperimentProtocol()
+    return ROOT/'outputs/runs'/protocol.run_id(method, region, seed)
 
 
 @torch.no_grad()
-def collect(method, region, seed):
-    checkpoint = torch.load(run_dir(method, region, seed)/'checkpoint.pt',
-                            map_location='cuda' if torch.cuda.is_available() else 'cpu',
-                            weights_only=False)
-    config = checkpoint['config']
-    config.data.regions = [region]
-    config.data.data_dir = 'data/generated_hit_ns'
-    config.data.cache_dir = 'data/cache_hit_ns'
+def collect(method, region, seed, protocol=None):
+    protocol = protocol or ExperimentProtocol()
+    checkpoint, config, _ = load_run(
+        run_dir(method, region, seed, protocol), protocol,
+        source=method, region=region, seed=seed)
     device = torch.device(config.device)
     model = NoPropModel(config).to(device)
     model.load_state_dict(checkpoint['model_state_dict'])
@@ -71,12 +71,22 @@ def summarize(latents, labels):
             'n_samples': int(len(labels))}
 
 
+def build_parser():
+    parser = argparse.ArgumentParser()
+    add_protocol_arguments(parser)
+    return parser
+
+
 def main():
-    artifact = {'schema_version': 1, 'protocol': {
+    parser = build_parser()
+    args = parser.parse_args()
+    protocol = protocol_from_args(args, parser)
+    artifact = {'schema_version': 5, 'protocol': {**protocol.metadata(),
+        'model_revision': protocol.model_revision,
         'regions': list(REGIONS), 'methods': [m[0] for m in METHODS],
         'seeds': list(SEEDS), 'split': 'trajectory-disjoint test split',
         'inference_seed': 'model seed + 10000',
-        'embedding': 'final z_T, 128 dimensions',
+        'embedding': 'final z_T, embedding dimension from checkpoint config',
         'projection': 'PCA and t-SNE fitted jointly across methods per region'},
         'results': {}, 'points': {}}
     for region in REGIONS:
@@ -84,7 +94,7 @@ def main():
         for method, label in METHODS:
             all_z, all_y = [], []
             for seed in SEEDS:
-                z, y = collect(method, region, seed)
+                z, y = collect(method, region, seed, protocol)
                 all_z.append(z); all_y.append(y)
             z = np.concatenate(all_z); y = np.concatenate(all_y)
             records[method] = (z, y)
@@ -104,7 +114,8 @@ def main():
                 'pca': pca[offset:offset+n].tolist(),
                 'tsne': tsne[offset:offset+n].tolist()}
             offset += n
-    output = ROOT/'outputs/aggregate/full_ns_latent_analysis.json'
+    output = protocol.aggregate_path(ROOT, 'latent_analysis')
+    output.parent.mkdir(parents=True, exist_ok=True)
     output.write_text(json.dumps(artifact, indent=2), encoding='utf-8')
     print(json.dumps(artifact['results'], indent=2))
 

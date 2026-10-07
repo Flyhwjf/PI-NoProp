@@ -13,9 +13,11 @@ ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 
 from src.data.hit_dataset import create_hit_dataloaders
-from src.decoder import TemporalPhysicsDecoder
 from src.noprop.model import NoPropModel
 from src.physics.temporal_ns_loss import TemporalNSPhysicsLoss
+from scripts.experiment_protocol import (ExperimentProtocol, add_protocol_arguments,
+                                        load_run, make_decoder, protocol_from_args,
+                                        validate_metadata)
 
 REGIONS = ('low_enstrophy', 'high_enstrophy')
 METHODS = ('none', 'discovered')
@@ -24,7 +26,14 @@ LEVELS = (0.0, 0.01, 0.05, 0.1, 0.2, 0.5, 1.0)
 REPETITIONS = 5
 
 
-def ns_terms_from_standardized(fields, means, stds, dx):
+def ns_terms_from_standardized(fields, means, stds, dx, target_size=None):
+    if target_size is not None:
+        if any(size < target_size or (size-target_size) % 2 for size in fields.shape[-3:]):
+            raise ValueError('physics target must be centred inside the input context')
+        starts = [(size-target_size)//2 for size in fields.shape[-3:]]
+        fields = fields[..., starts[0]:starts[0]+target_size,
+                        starts[1]:starts[1]+target_size,
+                        starts[2]:starts[2]+target_size]
     output_dtype = fields.dtype
     # Match the float64, second-order cache construction on clean inputs.
     physical = (fields*stds+means).double()
@@ -49,7 +58,7 @@ def ns_terms_from_standardized(fields, means, stds, dx):
 
 @torch.no_grad()
 def evaluate(model, decoder, physics, loader, level, repetition, means, stds, dx,
-             model_seed):
+             model_seed, target_size=None):
     device = means.device
     generator = torch.Generator(device=device).manual_seed(91_000+repetition)
     # Match the main evaluation and hold NoProp's initial latent fixed while
@@ -62,7 +71,7 @@ def evaluate(model, decoder, physics, loader, level, repetition, means, stds, dx
         fields = batch['field'].to(device)
         noisy = fields+level*torch.randn(fields.shape, generator=generator,
                                          device=device, dtype=fields.dtype)
-        terms = ns_terms_from_standardized(noisy, means, stds, dx)
+        terms = ns_terms_from_standardized(noisy, means, stds, dx, target_size)
         labels = batch['label'].to(device)
         logits, latents = model(noisy, ns_terms=terms, return_all_latents=True)
         correct += int((logits.argmax(-1) == labels).sum()); total += len(labels)
@@ -70,23 +79,36 @@ def evaluate(model, decoder, physics, loader, level, repetition, means, stds, dx
     return 100*correct/max(total, 1), ns/max(batches, 1)
 
 
-def main():
+def run_dir(method, region, seed, protocol=None):
+    protocol = protocol or ExperimentProtocol()
+    return ROOT/'outputs/runs'/protocol.run_id(method, region, seed)
+
+
+def build_parser():
     parser = argparse.ArgumentParser()
+    add_protocol_arguments(parser)
     parser.add_argument('--overwrite', action='store_true')
+    return parser
+
+
+def main():
+    parser = build_parser()
     args = parser.parse_args()
-    artifact = json.loads((ROOT/'outputs/spider/full_ns_equation.json').read_text())
-    output = ROOT/'outputs/aggregate/full_ns_noise.json'
+    protocol = protocol_from_args(args, parser)
+    output = protocol.aggregate_path(ROOT, 'noise')
     previous = None
     if output.exists() and not args.overwrite:
         previous = json.loads(output.read_text())
-    result = {'schema_version': 4, 'protocol': {
+        validate_metadata(previous.get('protocol', {}), protocol)
+    result = {'schema_version': 5, 'protocol': {**protocol.metadata(),
         'levels_in_channel_standard_deviations': list(LEVELS),
         'noise_definition': 'additive standard Gaussian noise in discovery-standardised channel units',
         'seeds': list(SEEDS), 'repetitions_per_seed': REPETITIONS,
         'clean_trained': True, 'trajectory_disjoint_test': True,
         'inference_latent': 'fixed per trained-model seed across noise levels and repetitions',
         'varied_randomness': 'observation noise only',
-        'model_revision': 'trainable-physics-condition-fusion'}, 'results': {}}
+        'model_revision': protocol.model_revision,
+        'readout': 'cosine similarity to frozen label embeddings'}, 'results': {}}
     for region in REGIONS:
         result['results'][region] = {}
         for method in METHODS:
@@ -97,33 +119,33 @@ def main():
                 str(level): retained[str(level)] for level in LEVELS
                 if str(level) in retained}
             missing = [level for level in LEVELS if str(level) not in retained]
-            if not missing:
-                print('reuse all predictive noise levels', region, method, flush=True)
-                continue
-            print('evaluate predictive noise levels', missing, region, method, flush=True)
+            print('evaluate predictive noise levels' if missing else
+                  'validate cached predictive noise levels', missing, region, method, flush=True)
             seed_records = {level: {'accuracy': [], 'eta_ns': []} for level in missing}
             for seed in SEEDS:
-                weight = '0' if method == 'none' else '0p01'
-                run = (ROOT/'outputs/runs'/
-                       f'full_ns_v4_{method}_{region}_lambda{weight}_seed{seed}')
-                checkpoint = torch.load(run/'checkpoint.pt', map_location='cuda',
-                                        weights_only=False)
-                config = checkpoint['config']; config.data.regions = [region]
-                config.data.data_dir = 'data/generated_hit_ns'
-                config.data.cache_dir = 'data/cache_hit_ns'
+                checkpoint, config, _ = load_run(
+                    run_dir(method, region, seed, protocol), protocol,
+                    source=method, region=region, seed=seed)
+                if not missing:
+                    continue
                 loaders = create_hit_dataloaders(config)[region]
                 model = NoPropModel(config).to(config.device)
-                decoder = TemporalPhysicsDecoder(128, 32, 9, 4).to(config.device)
+                decoder = make_decoder(config).to(config.device)
                 model.load_state_dict(checkpoint['model_state_dict'])
                 decoder.load_state_dict(checkpoint['decoder_state_dict'])
+                artifact_path = Path(config.physics.discovered_artifact)
+                if not artifact_path.is_absolute():
+                    artifact_path = ROOT/artifact_path
+                artifact = json.loads(artifact_path.read_text(encoding='utf-8'))
                 physics = TemporalNSPhysicsLoss(config, artifact).to(config.device)
-                stats = np.load(ROOT/'data/cache_hit_ns/stats.npz')
-                means = torch.tensor(stats['means'], device=config.device).view(1,4,1,1,1)
-                stds = torch.tensor(stats['stds'], device=config.device).view(1,4,1,1,1)
+                with np.load(Path(config.data.cache_dir)/'stats.npz') as stats:
+                    means = torch.tensor(stats['means'], device=config.device).view(1,4,1,1,1)
+                    stds = torch.tensor(stats['stds'], device=config.device).view(1,4,1,1,1)
                 dx = config.physics.box_length/config.physics.dns_grid_size
                 for level in missing:
                     repeated = [evaluate(model, decoder, physics, loaders['test'],
-                                         level, repetition, means, stds, dx, seed)
+                                         level, repetition, means, stds, dx, seed,
+                                         config.physics.physics_grid_size)
                                 for repetition in range(REPETITIONS)]
                     seed_records[level]['accuracy'].append(
                         float(np.mean([value[0] for value in repeated])))
@@ -135,6 +157,7 @@ def main():
                     key: {'values': values, 'mean': float(np.mean(values)),
                           'std': float(np.std(values, ddof=1))}
                     for key, values in record.items()}
+    output.parent.mkdir(parents=True, exist_ok=True)
     output.write_text(json.dumps(result, indent=2))
     print(json.dumps(result, indent=2))
 

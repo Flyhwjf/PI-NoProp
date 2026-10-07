@@ -7,6 +7,23 @@ from pathlib import Path
 
 import torch
 import torch.nn.functional as F
+from torch.utils.data import DataLoader, Dataset, RandomSampler
+
+from .pretrain import build_condition_cache, lookup_condition_cache
+
+
+class _CachedLocalDataset(Dataset):
+    """Expose only the sample id and label after conditions are cached."""
+
+    def __init__(self, dataset):
+        self.indices = dataset.indices
+        self.labels = dataset.labels
+
+    def __len__(self):
+        return len(self.indices)
+
+    def __getitem__(self, index):
+        return {'idx': int(self.indices[index]), 'label': self.labels[index]}
 
 
 def configure_torch(config):
@@ -55,9 +72,10 @@ class LocalNoPropTrainer:
                 optimizer = torch.optim.AdamW(block.parameters(), **optimizer_kwargs)
             self.block_optimizers.append(optimizer)
 
-        self.classifier_optimizer = torch.optim.AdamW(
-            self.model.classifier.parameters(), lr=config.training.lr,
-            weight_decay=config.training.weight_decay)
+        # The current readout is parameter-free; there is no separate output
+        # head optimizer after local block training.
+        self.classifier_optimizer = None
+        self.condition_cache = None
         self.block_updates = torch.zeros(self.T, dtype=torch.long)
         self._freeze_shared_modules()
 
@@ -101,10 +119,42 @@ class LocalNoPropTrainer:
         target = self.model.label_embed(labels)
         return condition, target
 
+    def prepare_condition_cache(self, dataloader):
+        """Precompute frozen condition features for local block training."""
+        started = time.perf_counter()
+        self.condition_cache = build_condition_cache(
+            self.model, dataloader, self.config)
+        count = 0
+        if self.condition_cache is not None:
+            count = int(self.condition_cache['valid'].sum().item())
+        return {'seconds': time.perf_counter()-started, 'samples': count}
+
+    def _local_dataloader(self, dataloader):
+        """Avoid collating unused 3-D fields once frozen conditions exist."""
+        if (self.condition_cache is None
+                or self.config.training.local_rec_weight > 0
+                or not all(hasattr(dataloader.dataset, name)
+                           for name in ('indices', 'labels'))):
+            return dataloader
+        dataset = _CachedLocalDataset(dataloader.dataset)
+        return DataLoader(
+            dataset, batch_size=dataloader.batch_size,
+            shuffle=isinstance(dataloader.sampler, RandomSampler),
+            num_workers=0, pin_memory=dataloader.pin_memory,
+            drop_last=dataloader.drop_last)
+
     def train_local_step(self, batch, block_index):
         """Update exactly one block and return scalar diagnostics."""
-        fields_true, labels, ns_terms = self._batch(batch)
-        condition, target = self._condition_and_target(fields_true, labels, ns_terms)
+        labels = batch['label'].to(self.device, non_blocking=True)
+        condition = lookup_condition_cache(
+            self.condition_cache, batch, self.device)
+        if condition is None:
+            fields_true, labels, ns_terms = self._batch(batch)
+            condition, target = self._condition_and_target(
+                fields_true, labels, ns_terms)
+        else:
+            with torch.no_grad():
+                target = self.model.label_embed(labels)
         t = int(block_index)
         schedule = self.model.noise_schedule
         input_signal = schedule.get_input_signal(t)
@@ -133,11 +183,19 @@ class LocalNoPropTrainer:
         if reconstructed is not None:
             # Spatial weak integration explicitly accumulates in FP32.
             physics, physics_metrics = self.physics_loss(reconstructed)
-            target_fields = (batch['sequence'].to(self.device, non_blocking=True)
-                             if reconstructed.ndim == 6 else fields_true)
-            reconstruction = F.mse_loss(
-                reconstructed.float(),
-                self._match_spatial_size(target_fields, reconstructed).float())
+            if self.config.training.local_rec_weight > 0:
+                if reconstructed.ndim == 6:
+                    target_fields = batch['sequence'].to(
+                        self.device, non_blocking=True)
+                else:
+                    target_fields = batch['field'].to(
+                        self.device, non_blocking=True)
+                reconstruction = F.mse_loss(
+                    reconstructed.float(),
+                    self._match_spatial_size(
+                        target_fields, reconstructed).float())
+            else:
+                reconstruction = torch.zeros((), device=self.device)
         else:
             physics = torch.zeros((), device=self.device)
             reconstruction = torch.zeros((), device=self.device)
@@ -174,6 +232,7 @@ class LocalNoPropTrainer:
 
     def train_local_epoch(self, dataloader, start_offset=0):
         """Use a shuffled balanced block schedule over an epoch."""
+        dataloader = self._local_dataloader(dataloader)
         self.model.train()
         self._freeze_shared_modules()
         totals = {key: 0.0 for key in ('loss', 'diff', 'phys', 'rec',
@@ -192,6 +251,7 @@ class LocalNoPropTrainer:
         return {key: value / max(count, 1) for key, value in totals.items()}
 
     def train_blocks(self, dataloader, steps_per_block=None, log_interval=100):
+        dataloader = self._local_dataloader(dataloader)
         target = int(steps_per_block or self.config.training.local_steps_per_block)
         iterator = iter(dataloader)
         history = []
@@ -214,32 +274,8 @@ class LocalNoPropTrainer:
         return history
 
     def train_classifier_epoch(self, dataloader):
-        for block in self.model.blocks:
-            block.eval()
-            for parameter in block.parameters():
-                parameter.requires_grad_(False)
-        self.model.classifier.train()
-        total_loss = correct = total = 0
-        for batch in dataloader:
-            fields, labels, ns_terms = self._batch(batch)
-            self.classifier_optimizer.zero_grad(set_to_none=True)
-            with torch.no_grad():
-                condition = self.model.encode_condition(fields, ns_terms)
-                z = torch.randn(labels.shape[0], self.config.noprop.embedding_dim,
-                                device=self.device)
-                for t, block in enumerate(self.model.blocks):
-                    a_t, b_t, _ = self.model.noise_schedule.get_coeffs(t)
-                    z = a_t * block(z, condition) + b_t * z
-            with self._autocast():
-                logits = self.model.classifier(z.detach())
-                loss = F.cross_entropy(logits, labels)
-            loss.backward()
-            self.classifier_optimizer.step()
-            total_loss += float(loss.detach()) * labels.shape[0]
-            correct += int((logits.argmax(-1) == labels).sum())
-            total += labels.shape[0]
-        return {'loss': total_loss / max(total, 1),
-                'accuracy': 100.0 * correct / max(total, 1)}
+        """Compatibility wrapper for the parameter-free prototype readout."""
+        return self.evaluate(dataloader)
 
     @torch.no_grad()
     def evaluate(self, dataloader, include_physics=False):

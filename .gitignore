@@ -1,33 +1,43 @@
-# -----------------------------------------------------------------------------
-# Local and private project material
-# -----------------------------------------------------------------------------
-# HIT arrays and derived caches are several GB and are not suitable for Git.
-/data/
-
-# Supervisor-provided source material and local tools.
+# Local data, private documents, and unrelated working files
+/data/*
 /初始/
+/Rz/
+/PINOPROP.zip
+/修订.pdf
+/pelican-bike.html
+
+# Unpublished manuscripts, rendered figures, and editorial records stay local.
+# Retain the Python plotting utilities required by the public experiment scripts.
+/paper/*
+!/paper/figure_code/
+/paper/figure_code/*
+!/paper/figure_code/*.py
+/paper_ch/
+/paper-v1/
+
+# Local configuration and credentials; retain a shareable environment template.
 /.claude/
 /.vscode/
-
-# Local environment and secret files. Keep an example file explicitly if added.
+.idea/
+*.code-workspace
 .env
 .env.*
 !.env.example
 *.pem
 *.key
 
-# -----------------------------------------------------------------------------
-# Experiment artifacts
-# -----------------------------------------------------------------------------
-# Ignore generated experiments by default, then retain the small JSON artifacts
-# needed to audit the paper's reported results and discovered equation.
-# Ignore each first-level output entry. Unlike `/outputs/**`, this still allows
-# selected child directories to be re-included below.
+# Experiment outputs: publish only the result/equation JSONs.
+# Reopen each selected directory, then allow only its direct JSON children.
+# Models, run histories, backups, and layout checks remain local.
 /outputs/*
 !/outputs/aggregate/
+/outputs/aggregate/*
+!/outputs/aggregate/*.json
 !/outputs/spider/
+/outputs/spider/*
+!/outputs/spider/*.json
 
-# Prevent large ML/data artifacts from being added elsewhere by accident.
+# Large ML/data artifacts and logs, wherever generated
 *.pt
 *.pth
 *.ckpt
@@ -38,63 +48,70 @@
 *.zarr/
 *.log
 
-# -----------------------------------------------------------------------------
-# Python
-# -----------------------------------------------------------------------------
+# Publish only the original HIT frames and their dataset/trajectory metadata.
+# Keep derived caches and other large artifacts excluded.
+!/data/generated_hit_ns/
+/data/generated_hit_ns/*
+!/data/generated_hit_ns/manifest.json
+!/data/generated_hit_ns/trajectory_[0-9][0-9][0-9]/
+/data/generated_hit_ns/trajectory_[0-9][0-9][0-9]/*
+!/data/generated_hit_ns/trajectory_[0-9][0-9][0-9]/metadata.json
+!/data/generated_hit_ns/trajectory_[0-9][0-9][0-9]/frame_[0-9][0-9][0-9].npz
+
+# Python environments, caches, packaging, and test reports
 __pycache__/
 *.py[cod]
 *$py.class
+.venv/
+venv/
 .pytest_cache/
 .mypy_cache/
 .ruff_cache/
+.tox/
+.nox/
 .coverage
+.coverage.*
+coverage.xml
 htmlcov/
 build/
 dist/
 *.egg-info/
-.venv/
-venv/
-
-# Jupyter
 .ipynb_checkpoints/
 
-# -----------------------------------------------------------------------------
-# LaTeX (keep .tex, figures, bibliography, and the final PDF)
-# -----------------------------------------------------------------------------
+# LaTeX intermediates for local manuscript compilation
+*.aux
+*.bbl
+*.blg
+*.bcf
+*.fdb_latexmk
+*.fls
+*.lof
+*.lot
+*.loa
+*.lol
+*.out
+*.spl
+*.synctex.gz
+*.synctex(busy)
+*.toc
+*.run.xml
+*.xdv
+*.dvi
+*.nav
+*.snm
+*.vrb
+*.idx
+*.ind
+*.ilg
 /paper/out/
-/paper-v1/out/
-paper/*.aux
-paper-v1/*.aux
-paper/*.bbl
-paper-v1/*.bbl
-paper/*.blg
-paper-v1/*.blg
-paper/*.fdb_latexmk
-paper-v1/*.fdb_latexmk
-paper/*.fls
-paper-v1/*.fls
-paper/*.lof
-paper-v1/*.lof
-paper/*.lot
-paper-v1/*.lot
-paper/*.log
-paper-v1/*.log
-paper/*.out
-paper-v1/*.out
-paper/*.spl
-paper-v1/*.spl
-paper/*.synctex.gz
-paper-v1/*.synctex.gz
-paper/*.toc
-paper-v1/*.toc
+/paper_ch/out/
+/paper/figures/*_preview.png
+/paper_ch/figures/*_preview.png
 
-# -----------------------------------------------------------------------------
-# Editors and operating systems
-# -----------------------------------------------------------------------------
-.idea/
-*.code-workspace
+# Editor backups and operating-system metadata
 .DS_Store
 Thumbs.db
 Desktop.ini
 *~
 *.swp
+*.swo

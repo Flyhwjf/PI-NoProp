@@ -1,0 +1,334 @@
+{
+  "schema_version": 5,
+  "protocol": {
+    "seeds": [
+      42,
+      123,
+      456
+    ],
+    "regions": [
+      "low_enstrophy",
+      "high_enstrophy"
+    ],
+    "methods": [
+      "none",
+      "analytic",
+      "discovered"
+    ],
+    "trajectory_disjoint": true,
+    "target": "future local relative kinetic-energy decay quantile",
+    "steps_per_block": 100,
+    "lambda_phys": 0.1,
+    "input_spatial_size": 32,
+    "target_spatial_size": 16,
+    "spatial_context_mode": "residual_warmstart",
+    "model_revision": "cached-residual-warmstart-physics-condition-prototype-readout",
+    "readout": "cosine similarity to frozen label embeddings"
+  },
+  "results": {
+    "low_enstrophy": {
+      "none": {
+        "accuracy": {
+          "values": [
+            29.62962962962963,
+            23.14814814814815,
+            24.074074074074073
+          ],
+          "mean": 25.61728395061728,
+          "std": 3.5054989788890576
+        },
+        "eta_ns": {
+          "values": [
+            0.4789252355694771,
+            0.5416924357414246,
+            0.8224111348390579
+          ],
+          "mean": 0.6143429353833199,
+          "std": 0.1829049263221768
+        },
+        "eta_div": {
+          "values": [
+            0.10259932465851307,
+            0.28633784502744675,
+            0.3804096207022667
+          ],
+          "mean": 0.25644893012940884,
+          "std": 0.14129632186407445
+        },
+        "block_seconds": {
+          "values": [
+            6.055097300035413,
+            6.016499500023201,
+            6.013669799955096
+          ],
+          "mean": 6.02842220000457
+        },
+        "peak_memory_mb": {
+          "values": [
+            239.96240234375,
+            239.96240234375,
+            239.96240234375
+          ],
+          "mean": 239.96240234375
+        },
+        "run_ids": [
+          "full_ns_v5_input32_target16_residual_warmstart_none_low_enstrophy_lambda0_seed42",
+          "full_ns_v5_input32_target16_residual_warmstart_none_low_enstrophy_lambda0_seed123",
+          "full_ns_v5_input32_target16_residual_warmstart_none_low_enstrophy_lambda0_seed456"
+        ]
+      },
+      "analytic": {
+        "accuracy": {
+          "values": [
+            87.96296296296296,
+            85.18518518518519,
+            87.03703703703704
+          ],
+          "mean": 86.7283950617284,
+          "std": 1.41437521449254
+        },
+        "eta_ns": {
+          "values": [
+            0.15030749142169952,
+            0.40485696494579315,
+            0.286302387714386
+          ],
+          "mean": 0.2804889480272929,
+          "std": 0.12737427400615445
+        },
+        "eta_div": {
+          "values": [
+            0.09234496206045151,
+            0.1240338645875454,
+            0.11067716777324677
+          ],
+          "mean": 0.10901866480708122,
+          "std": 0.015909418905462866
+        },
+        "block_seconds": {
+          "values": [
+            17.371686699974816,
+            17.189457900007255,
+            17.27617339999415
+          ],
+          "mean": 17.279105999992073
+        },
+        "peak_memory_mb": {
+          "values": [
+            261.115234375,
+            261.115234375,
+            261.115234375
+          ],
+          "mean": 261.115234375
+        },
+        "run_ids": [
+          "full_ns_v5_input32_target16_residual_warmstart_analytic_low_enstrophy_lambda0p1_seed42",
+          "full_ns_v5_input32_target16_residual_warmstart_analytic_low_enstrophy_lambda0p1_seed123",
+          "full_ns_v5_input32_target16_residual_warmstart_analytic_low_enstrophy_lambda0p1_seed456"
+        ]
+      },
+      "discovered": {
+        "accuracy": {
+          "values": [
+            87.96296296296296,
+            86.11111111111111,
+            87.96296296296296
+          ],
+          "mean": 87.34567901234568,
+          "std": 1.069167165165971
+        },
+        "eta_ns": {
+          "values": [
+            0.18434881418943405,
+            0.2869910039007664,
+            0.19802666455507278
+          ],
+          "mean": 0.22312216088175774,
+          "std": 0.05573322823142651
+        },
+        "eta_div": {
+          "values": [
+            0.08849938400089741,
+            0.09202826395630836,
+            0.16658823192119598
+          ],
+          "mean": 0.11570529329280059,
+          "std": 0.04410122822587501
+        },
+        "block_seconds": {
+          "values": [
+            17.909174200030975,
+            17.602024600026198,
+            17.438902300025802
+          ],
+          "mean": 17.65003370002766
+        },
+        "peak_memory_mb": {
+          "values": [
+            262.90478515625,
+            262.90478515625,
+            262.90478515625
+          ],
+          "mean": 262.90478515625
+        },
+        "run_ids": [
+          "full_ns_v5_input32_target16_residual_warmstart_discovered_low_enstrophy_lambda0p1_seed42",
+          "full_ns_v5_input32_target16_residual_warmstart_discovered_low_enstrophy_lambda0p1_seed123",
+          "full_ns_v5_input32_target16_residual_warmstart_discovered_low_enstrophy_lambda0p1_seed456"
+        ]
+      }
+    },
+    "high_enstrophy": {
+      "none": {
+        "accuracy": {
+          "values": [
+            17.857142857142858,
+            13.095238095238095,
+            20.238095238095237
+          ],
+          "mean": 17.063492063492063,
+          "std": 3.6369648372665395
+        },
+        "eta_ns": {
+          "values": [
+            0.8043901721636454,
+            0.6061771114667257,
+            0.8181499441464742
+          ],
+          "mean": 0.7429057425922818,
+          "std": 0.11861016717953038
+        },
+        "eta_div": {
+          "values": [
+            0.5558158059914907,
+            0.583689550558726,
+            0.16215689977010092
+          ],
+          "mean": 0.43388741877343917,
+          "std": 0.23573786846287031
+        },
+        "block_seconds": {
+          "values": [
+            5.940934699960053,
+            6.063662400003523,
+            6.312649699975736
+          ],
+          "mean": 6.105748933313104
+        },
+        "peak_memory_mb": {
+          "values": [
+            239.962890625,
+            239.962890625,
+            239.962890625
+          ],
+          "mean": 239.962890625
+        },
+        "run_ids": [
+          "full_ns_v5_input32_target16_residual_warmstart_none_high_enstrophy_lambda0_seed42",
+          "full_ns_v5_input32_target16_residual_warmstart_none_high_enstrophy_lambda0_seed123",
+          "full_ns_v5_input32_target16_residual_warmstart_none_high_enstrophy_lambda0_seed456"
+        ]
+      },
+      "analytic": {
+        "accuracy": {
+          "values": [
+            79.76190476190476,
+            83.33333333333333,
+            79.76190476190476
+          ],
+          "mean": 80.95238095238095,
+          "std": 2.061965247105805
+        },
+        "eta_ns": {
+          "values": [
+            0.22336109975973764,
+            0.1602309693892797,
+            0.2192635734875997
+          ],
+          "mean": 0.20095188087887236,
+          "std": 0.03532480579982209
+        },
+        "eta_div": {
+          "values": [
+            0.07923546433448792,
+            0.06808645774920781,
+            0.06683255111177762
+          ],
+          "mean": 0.0713848243984911,
+          "std": 0.006827699540646818
+        },
+        "block_seconds": {
+          "values": [
+            17.28734079998685,
+            17.18182290002005,
+            17.533202499966137
+          ],
+          "mean": 17.33412206665768
+        },
+        "peak_memory_mb": {
+          "values": [
+            261.11572265625,
+            261.11572265625,
+            261.11572265625
+          ],
+          "mean": 261.11572265625
+        },
+        "run_ids": [
+          "full_ns_v5_input32_target16_residual_warmstart_analytic_high_enstrophy_lambda0p1_seed42",
+          "full_ns_v5_input32_target16_residual_warmstart_analytic_high_enstrophy_lambda0p1_seed123",
+          "full_ns_v5_input32_target16_residual_warmstart_analytic_high_enstrophy_lambda0p1_seed456"
+        ]
+      },
+      "discovered": {
+        "accuracy": {
+          "values": [
+            79.76190476190476,
+            84.52380952380952,
+            80.95238095238095
+          ],
+          "mean": 81.74603174603175,
+          "std": 2.478173808888252
+        },
+        "eta_ns": {
+          "values": [
+            0.24329366783301035,
+            0.18655145665009817,
+            0.14244533578554788
+          ],
+          "mean": 0.1907634867562188,
+          "std": 0.05055593355284779
+        },
+        "eta_div": {
+          "values": [
+            0.07639861603577931,
+            0.0745787223180135,
+            0.07523991664250691
+          ],
+          "mean": 0.07540575166543324,
+          "std": 0.0009212107397944273
+        },
+        "block_seconds": {
+          "values": [
+            17.497681400040165,
+            17.607685499999207,
+            17.562025399995036
+          ],
+          "mean": 17.555797433344804
+        },
+        "peak_memory_mb": {
+          "values": [
+            262.9052734375,
+            262.9052734375,
+            262.9052734375
+          ],
+          "mean": 262.9052734375
+        },
+        "run_ids": [
+          "full_ns_v5_input32_target16_residual_warmstart_discovered_high_enstrophy_lambda0p1_seed42",
+          "full_ns_v5_input32_target16_residual_warmstart_discovered_high_enstrophy_lambda0p1_seed123",
+          "full_ns_v5_input32_target16_residual_warmstart_discovered_high_enstrophy_lambda0p1_seed456"
+        ]
+      }
+    }
+  }
+}

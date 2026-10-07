@@ -10,7 +10,7 @@ from src.noprop.diffusion import NoiseSchedule
 
 
 class LocalFieldEncoder(nn.Module):
-    """Compact per-learner encoder for a four-channel 16^3 input field."""
+    """Compact per-learner encoder for four-channel 16^3 or 32^3 fields."""
 
     def __init__(self, in_channels=4, output_dim=128):
         super().__init__()
@@ -22,7 +22,11 @@ class LocalFieldEncoder(nn.Module):
         )
 
     def forward(self, fields):
-        return self.net(fields)
+        # Pool the full context to the same feature grid. Existing 16^3
+        # checkpoint keys and parameter counts remain unchanged.
+        hidden = self.net[:6](fields)
+        hidden = F.adaptive_avg_pool3d(hidden, (2, 2, 2))
+        return self.net[6:](hidden)
 
 
 class ReferenceNoPropStep(nn.Module):
@@ -147,4 +151,3 @@ class ContinuousNoProp3D(nn.Module):
         latent_path, _ = solver(
             dynamics, (initial_latent, condition), times, **kwargs)
         return latent_path[-1]
-

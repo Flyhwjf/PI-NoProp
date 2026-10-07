@@ -62,6 +62,19 @@ class TestTemporalNSLoss(unittest.TestCase):
             self.assertTrue(torch.isfinite(metrics['eta_pp']))
             self.assertTrue(torch.isfinite(metrics['eta_energy']))
 
+    def test_disabled_auxiliary_relations_are_deferred_to_evaluation(self):
+        with tempfile.TemporaryDirectory() as root:
+            _, loss_module = self._loss(root)
+            loss_module.use_pressure_poisson = False
+            loss_module.use_energy = False
+            fields = torch.randn(1, 7, 4, 8, 8, 8)
+            _, training_metrics = loss_module(fields)
+            self.assertEqual(float(training_metrics['eta_pp']), 0.0)
+            self.assertEqual(float(training_metrics['eta_energy']), 0.0)
+            evaluation_metrics = loss_module.evaluate_metrics(fields)
+            self.assertTrue(np.isfinite(evaluation_metrics['eta_pp']))
+            self.assertTrue(np.isfinite(evaluation_metrics['eta_energy']))
+
     def test_unvalidated_artifact_is_rejected(self):
         with tempfile.TemporaryDirectory() as root:
             np.savez(Path(root)/'stats.npz', means=np.zeros(4, np.float32),

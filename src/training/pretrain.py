@@ -5,6 +5,7 @@ import contextlib
 import copy
 from pathlib import Path
 
+import numpy as np
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
@@ -44,6 +45,68 @@ def _autocast(config, device):
         return contextlib.nullcontext()
     dtype = torch.bfloat16 if config.training.amp_dtype == 'bfloat16' else torch.float16
     return torch.autocast('cuda', dtype=dtype)
+
+
+@torch.no_grad()
+def build_condition_cache(model, dataloader, config):
+    """Encode every indexed sample once after the condition path is frozen.
+
+    HIT datasets expose their stable global sample index as ``idx``.  A dense
+    lookup table is tiny (roughly 0.5 MiB for 960 x 128 float32 values) and
+    removes repeated 3-D encoder passes during decoder and local-block
+    training.  Generic loaders without stable indices transparently fall back
+    to on-demand encoding.
+    """
+    if not bool(getattr(config.training, 'cache_conditions', False)):
+        return None
+    dataset_indices = getattr(dataloader.dataset, 'indices', None)
+    if dataset_indices is None or len(dataset_indices) == 0:
+        return None
+
+    device = torch.device(config.device)
+    cache_device = (device if bool(getattr(config.data, 'cache_on_device', False))
+                    else torch.device('cpu'))
+    max_index = int(np.asarray(dataset_indices).max())
+    values = torch.empty(
+        max_index+1, config.noprop.condition_dim, dtype=torch.float32,
+        device=cache_device,
+        pin_memory=(cache_device.type == 'cpu' and device.type == 'cuda'))
+    valid = torch.zeros(max_index+1, dtype=torch.bool, device=cache_device)
+
+    for module in _condition_modules(model):
+        module.eval()
+    rng_devices = ([torch.cuda.current_device()]
+                   if device.type == 'cuda' else [])
+    # Iterating a shuffled loader consumes RNG state; restore it so enabling
+    # the cache does not alter the subsequent local-training schedule.
+    with torch.random.fork_rng(devices=rng_devices):
+        for batch in dataloader:
+            if 'idx' not in batch:
+                return None
+            fields = _field(batch, device)
+            conditions = model.encode_condition(
+                fields, _ns_terms(batch, device)).detach().float()
+            indices = batch['idx'].long().to(cache_device)
+            values.index_copy_(0, indices, conditions.to(cache_device))
+            valid.index_fill_(0, indices, True)
+
+    expected = torch.as_tensor(dataset_indices, dtype=torch.long,
+                               device=cache_device)
+    if not bool(valid.index_select(0, expected).all()):
+        raise RuntimeError('condition cache is incomplete')
+    return {'values': values, 'valid': valid}
+
+
+def lookup_condition_cache(cache, batch, device):
+    """Return cached conditions for one indexed batch."""
+    if cache is None or 'idx' not in batch:
+        return None
+    values, valid = cache['values'], cache['valid']
+    indices = batch['idx'].long().to(values.device)
+    if not bool(valid.index_select(0, indices).all()):
+        raise KeyError('batch contains an index absent from the condition cache')
+    conditions = values.index_select(0, indices)
+    return conditions.to(device, non_blocking=True)
 
 
 def pretrain_encoder(model, dataloader, config, epochs=None, val_loader=None,
@@ -149,6 +212,138 @@ def align_label_embeddings_to_encoder(model, dataloader, config):
     return centroids
 
 
+def initialize_residual_context_from_local(model):
+    """Copy the trained centre backbone into a zero-gated context branch."""
+    encoder = model.encoder
+    encoder.context_backbone.load_state_dict(encoder.local_backbone.state_dict())
+    with torch.no_grad():
+        encoder.context_gate.zero_()
+        encoder.context_projection.weight.copy_(torch.eye(
+            encoder.context_projection.out_features,
+            device=encoder.context_projection.weight.device,
+            dtype=encoder.context_projection.weight.dtype))
+    encoder.context_enabled = True
+
+
+def load_residual_context_warmstart(model, decoder, path, device,
+                                    load_decoder=True):
+    """Initialize a residual 32^3 encoder from a matched 16^3 pathway."""
+    checkpoint = torch.load(path, map_location=device, weights_only=True)
+    encoder = model.encoder
+    required_attributes = ('local_backbone', 'context_backbone',
+                           'context_projection', 'context_gate')
+    missing_attributes = [name for name in required_attributes
+                          if not hasattr(encoder, name)]
+    if missing_attributes:
+        raise TypeError(
+            'residual warm-start requires a residual context encoder; missing '
+            f'{missing_attributes}')
+    encoder.local_backbone.load_state_dict(checkpoint['encoder'])
+    encoder.context_backbone.load_state_dict(checkpoint['encoder'])
+    model.physics_encoder.load_state_dict(checkpoint['physics_encoder'])
+    model.condition_fusion.load_state_dict(checkpoint['condition_fusion'])
+    model.label_embed.load_state_dict(checkpoint['label_embed'])
+    if load_decoder:
+        decoder.load_state_dict(checkpoint['decoder'])
+    initialize_residual_context_from_local(model)
+
+
+@torch.no_grad()
+def _context_prototype_metrics(model, dataloader, device, temperature):
+    model.eval()
+    prototypes = F.normalize(model._label_prototypes().detach(), dim=-1)
+    correct = total = 0
+    loss_sum = 0.0
+    for batch in dataloader:
+        fields = _field(batch, device)
+        labels = batch['label'].to(device, non_blocking=True)
+        conditions = model.encode_condition(fields, _ns_terms(batch, device))
+        logits = F.normalize(conditions, dim=-1) @ prototypes.t() / temperature
+        loss_sum += float(F.cross_entropy(logits, labels)) * labels.shape[0]
+        correct += int((logits.argmax(-1) == labels).sum())
+        total += labels.shape[0]
+    return {'accuracy': 100.0*correct/max(total, 1),
+            'loss': loss_sum/max(total, 1)}
+
+
+def adapt_residual_context(model, train_loader, val_loader, config, epochs=20,
+                           patience=6, temperature=0.1):
+    """Fit only the bounded context residual, retaining the best val state.
+
+    The zero-gate centre model is evaluated before the first update and is a
+    valid early-stopping candidate.  Context is therefore retained only when
+    it improves validation accuracy, or validation loss at equal accuracy.
+    """
+    device = torch.device(config.device)
+    encoder = model.encoder
+    for module in _condition_modules(model):
+        module.eval()
+        for parameter in module.parameters():
+            parameter.requires_grad_(False)
+    for module in (encoder.context_backbone, encoder.context_projection):
+        module.train()
+        for parameter in module.parameters():
+            parameter.requires_grad_(True)
+    encoder.context_gate.requires_grad_(True)
+    trainable = [parameter for parameter in encoder.parameters()
+                 if parameter.requires_grad]
+    optimizer = torch.optim.AdamW(
+        trainable, lr=min(config.training.lr, 3e-4),
+        weight_decay=config.training.weight_decay)
+    scaler = torch.amp.GradScaler(
+        'cuda', enabled=(config.training.use_amp and device.type == 'cuda'))
+    baseline = _context_prototype_metrics(
+        model, val_loader, device, temperature)
+    best_metrics = dict(baseline)
+    best_state = copy.deepcopy(encoder.state_dict())
+    stale_epochs = 0
+    prototypes = F.normalize(model._label_prototypes().detach(), dim=-1)
+    for epoch in range(int(epochs)):
+        encoder.context_backbone.train()
+        encoder.context_projection.train()
+        for batch in train_loader:
+            fields = _field(batch, device)
+            labels = batch['label'].to(device, non_blocking=True)
+            optimizer.zero_grad(set_to_none=True)
+            with _autocast(config, device):
+                conditions = model.encode_condition(
+                    fields, _ns_terms(batch, device))
+                logits = (F.normalize(conditions, dim=-1)
+                          @ prototypes.t() / temperature)
+                loss = F.cross_entropy(logits, labels)
+            scaler.scale(loss).backward()
+            scaler.step(optimizer)
+            scaler.update()
+        metrics = _context_prototype_metrics(
+            model, val_loader, device, temperature)
+        improved = (
+            metrics['accuracy'] > best_metrics['accuracy']
+            or (metrics['accuracy'] == best_metrics['accuracy']
+                and metrics['loss'] < best_metrics['loss']))
+        if improved:
+            best_metrics = dict(metrics)
+            best_state = copy.deepcopy(encoder.state_dict())
+            stale_epochs = 0
+        else:
+            stale_epochs += 1
+        if epoch == int(epochs)-1 or (epoch+1) % 5 == 0:
+            print(f'context adapt {epoch+1}/{epochs}: '
+                  f'val={metrics["accuracy"]:.1f}% loss={metrics["loss"]:.4f}')
+        if stale_epochs >= patience:
+            print(f'context adaptation early stop at {epoch+1}')
+            break
+    encoder.load_state_dict(best_state)
+    for module in _condition_modules(model):
+        module.eval()
+        for parameter in module.parameters():
+            parameter.requires_grad_(False)
+    return {
+        'baseline_validation': baseline,
+        'selected_validation': best_metrics,
+        'gate_norm': float(encoder.context_gate.detach().norm()),
+    }
+
+
 def pretrain_decoder(model, decoder, dataloader, config, epochs=None):
     """Pretrain a field auto-decoder on frozen encoder features."""
     device = torch.device(config.device)
@@ -168,13 +363,16 @@ def pretrain_decoder(model, decoder, dataloader, config, epochs=None):
         lr=config.training.pretrain_lr, weight_decay=config.training.weight_decay)
     scaler = torch.amp.GradScaler('cuda', enabled=(config.training.use_amp
                                                    and device.type == 'cuda'))
+    condition_cache = build_condition_cache(model, dataloader, config)
     for epoch in range(epochs):
         loss_sum = samples = 0
         for batch in dataloader:
-            fields = _field(batch, device)
             optimizer.zero_grad(set_to_none=True)
             with torch.no_grad():
-                z = model.encode_condition(fields, _ns_terms(batch, device))
+                z = lookup_condition_cache(condition_cache, batch, device)
+                if z is None:
+                    fields = _field(batch, device)
+                    z = model.encode_condition(fields, _ns_terms(batch, device))
                 # Mild latent noise makes the frozen decoder useful around,
                 # not only exactly on, the encoder manifold.
                 z = z + 0.02 * torch.randn_like(z)
@@ -183,17 +381,19 @@ def pretrain_decoder(model, decoder, dataloader, config, epochs=None):
                 if reconstruction.ndim == 6:
                     target = batch['sequence'].to(device, non_blocking=True)
                 else:
+                    fields = _field(batch, device)
                     target = fields
                 loss = F.mse_loss(
                     reconstruction, _match_spatial_size(target, reconstruction))
             scaler.scale(loss).backward()
             scaler.step(optimizer)
             scaler.update()
-            loss_sum += float(loss.detach()) * fields.shape[0]
-            samples += fields.shape[0]
+            loss_sum += float(loss.detach()) * z.shape[0]
+            samples += z.shape[0]
         if epoch == epochs - 1 or (epoch + 1) % 10 == 0:
             print(f'decoder pretrain {epoch+1}/{epochs}: '
                   f'mse={loss_sum/max(samples,1):.5f}')
+    return condition_cache
 
 
 def save_shared_components(model, decoder, path):

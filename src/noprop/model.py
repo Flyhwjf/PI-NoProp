@@ -1,11 +1,94 @@
-"""Complete NoProp model: T blocks + classifier + diffusion losses."""
+"""Complete NoProp model: T local blocks, prototype readout, and losses."""
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
 from .diffusion import NoiseSchedule
 from .embedding import LabelEmbedding
 from .blocks import NoPropBlock
-from .classifier import ClassifierHead
+from .classifier import PrototypeReadout
+
+
+def _make_spatial_backbone(input_channels, condition_dim):
+    return nn.Sequential(
+        nn.Conv3d(input_channels, 16, 3, padding=1), nn.GELU(),
+        nn.Conv3d(16, 32, 3, stride=2, padding=1), nn.GELU(),
+        nn.Conv3d(32, 64, 3, stride=2, padding=1), nn.GELU(),
+        nn.AdaptiveAvgPool3d((2, 2, 2)), nn.Flatten(),
+        nn.Linear(64 * 2 * 2 * 2, condition_dim),
+    )
+
+
+class DualScaleSpatialEncoder(nn.Module):
+    """Encode a centred target cube together with its larger context.
+
+    Both scales share the 3-D backbone.  The fusion layer starts as an exact
+    pass-through of the centred target feature, so expanding the field of view
+    does not initially dilute the signal that defines the prediction target.
+    Supervised condition pretraining can then learn how much surrounding
+    context to add.
+    """
+
+    def __init__(self, input_channels, condition_dim, target_size):
+        super().__init__()
+        self.target_size = int(target_size)
+        self.backbone = _make_spatial_backbone(input_channels, condition_dim)
+        self.fusion = nn.Linear(2*condition_dim, condition_dim)
+        with torch.no_grad():
+            self.fusion.weight.zero_()
+            self.fusion.bias.zero_()
+            self.fusion.weight[:, :condition_dim].copy_(
+                torch.eye(condition_dim))
+
+    def forward(self, fields):
+        starts = [(length-self.target_size)//2
+                  for length in fields.shape[-3:]]
+        local = fields[..., starts[0]:starts[0]+self.target_size,
+                       starts[1]:starts[1]+self.target_size,
+                       starts[2]:starts[2]+self.target_size]
+        local_feature = self.backbone(local)
+        context_feature = self.backbone(fields)
+        return self.fusion(torch.cat([local_feature, context_feature], dim=-1))
+
+
+class ResidualContextSpatialEncoder(nn.Module):
+    """Add bounded large-cube context to an undisturbed centre pathway.
+
+    The centre and context use independent backbones, so gradients produced by
+    the surrounding 32^3 field cannot overwrite filters used for the 16^3
+    target cube.  A zero-initialized, bounded feature-wise gate makes the
+    initial representation exactly the centre feature and limits context to a
+    residual correction during supervised condition pretraining.
+    """
+
+    def __init__(self, input_channels, condition_dim, target_size,
+                 max_context_scale=0.25):
+        super().__init__()
+        self.target_size = int(target_size)
+        self.max_context_scale = float(max_context_scale)
+        self.context_enabled = True
+        self.local_backbone = _make_spatial_backbone(
+            input_channels, condition_dim)
+        self.context_backbone = _make_spatial_backbone(
+            input_channels, condition_dim)
+        self.context_projection = nn.Linear(
+            condition_dim, condition_dim, bias=False)
+        self.context_gate = nn.Parameter(torch.zeros(condition_dim))
+
+    def forward(self, fields):
+        starts = [(length-self.target_size)//2
+                  for length in fields.shape[-3:]]
+        local = fields[..., starts[0]:starts[0]+self.target_size,
+                       starts[1]:starts[1]+self.target_size,
+                       starts[2]:starts[2]+self.target_size]
+        local_feature = self.local_backbone(local)
+        if not self.context_enabled:
+            return local_feature
+        context_feature = self.context_projection(
+            self.context_backbone(fields))
+        context_feature = F.normalize(context_feature, dim=-1)
+        local_scale = local_feature.norm(dim=-1, keepdim=True).detach()
+        gate = self.max_context_scale * torch.tanh(self.context_gate)
+        return local_feature + gate * context_feature * local_scale
 
 
 class NoPropModel(nn.Module):
@@ -37,13 +120,22 @@ class NoPropModel(nn.Module):
         # Preserve local derivatives before pooling.  The previous direct
         # 16^3 -> 4^3 average erased precisely the pressure/velocity-gradient
         # signal that controls short-horizon energy change.
-        self.encoder = nn.Sequential(
-            nn.Conv3d(config.data.n_channels, 16, 3, padding=1), nn.GELU(),
-            nn.Conv3d(16, 32, 3, stride=2, padding=1), nn.GELU(),
-            nn.Conv3d(32, 64, 3, stride=2, padding=1), nn.GELU(),
-            nn.AdaptiveAvgPool3d((2, 2, 2)), nn.Flatten(),
-            nn.Linear(64 * 2 * 2 * 2, d_cfg.condition_dim),
-        )
+        target_size = (config.data.target_subdomain_size
+                       or config.data.subdomain_size)
+        if config.data.subdomain_size > target_size:
+            if d_cfg.spatial_context_mode == 'dual_scale':
+                self.encoder = DualScaleSpatialEncoder(
+                    config.data.n_channels, d_cfg.condition_dim, target_size)
+            elif d_cfg.spatial_context_mode in (
+                    'residual_dual_scale', 'residual_warmstart'):
+                self.encoder = ResidualContextSpatialEncoder(
+                    config.data.n_channels, d_cfg.condition_dim, target_size)
+            else:
+                self.encoder = _make_spatial_backbone(
+                    config.data.n_channels, d_cfg.condition_dim)
+        else:
+            self.encoder = _make_spatial_backbone(
+                config.data.n_channels, d_cfg.condition_dim)
         coefficients = config.physics.condition_coefficients
         if coefficients is None:
             self.register_buffer('physics_coefficients', torch.zeros(3))
@@ -74,8 +166,16 @@ class NoPropModel(nn.Module):
             for _ in range(config.diffusion.T)
         ])
 
-        # Classifier head
-        self.classifier = ClassifierHead(d_cfg.embedding_dim, config.data.n_classes)
+        # Parameter-free classifier: final latents are read against the
+        # frozen class prototypes stored in label_embed.
+        self.classifier = PrototypeReadout(
+            d_cfg.embedding_dim, config.data.n_classes)
+
+    def _label_prototypes(self):
+        embedding = self.label_embed.embed
+        if isinstance(embedding, nn.Embedding):
+            return embedding.weight
+        return embedding
 
     def encode_condition(self, x, ns_terms=None):
         spatial = self.encoder(x)
@@ -97,7 +197,7 @@ class NoPropModel(nn.Module):
             x: (batch_size, 4, H, H, H) input field
             return_all_latents: return list of all intermediate z_t
         Returns:
-            logits or (logits, z_all)
+            cosine-readout logits or (logits, z_all)
         """
         batch_size = x.shape[0]
         device = x.device
@@ -121,7 +221,7 @@ class NoPropModel(nn.Module):
             if return_all_latents:
                 z_all.append(z)
 
-        logits = self.classifier(z)
+        logits = self.classifier(z, self._label_prototypes())
 
         if return_all_latents:
             return logits, z_all

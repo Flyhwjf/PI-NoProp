@@ -9,6 +9,10 @@ class DataConfig:
     data_dir: str = 'data/generated'
     regions: List[str] = field(default_factory=lambda: ['centre', 'edge'])
     subdomain_size: int = 32
+    # The model may receive a larger spatial context than the region used to
+    # define the label and temporal physics target.  ``None`` preserves the
+    # legacy behaviour in which input and target have the same size.
+    target_subdomain_size: Optional[int] = None
     n_subdomains: int = 256
     n_classes: int = 10
     n_timesteps: int = 32
@@ -50,6 +54,7 @@ class NoPropConfig:
     n_hidden_layers: int = 3
     activation: str = 'relu'
     normalize_condition: bool = False
+    spatial_context_mode: str = 'single'
 
 
 @dataclass

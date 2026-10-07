@@ -1,0 +1,105 @@
+{
+  "schema_version": 5,
+  "protocol": {
+    "prefix": "full_ns_v5_input32_target16_residual_warmstart",
+    "input_spatial_size": 32,
+    "target_spatial_size": 16,
+    "spatial_context_mode": "residual_warmstart",
+    "lambda_weight": 0.1,
+    "cache_dir": "data/cache_hit_ns_input32_target16",
+    "seeds": [
+      42,
+      123,
+      456
+    ],
+    "region": "low_enstrophy",
+    "trajectory_disjoint": true,
+    "relation_set": "ns",
+    "shared_condition_components_across_architectures": true,
+    "condition_matching": "bitwise checkpoint verification of full encoder, physics condition, fusion, prototypes and normalization buffers",
+    "architectures": [
+      "conv",
+      "linear"
+    ],
+    "model_revision": "cached-residual-warmstart-physics-condition-prototype-readout",
+    "readout": "cosine similarity to frozen label embeddings"
+  },
+  "results": {
+    "conv": {
+      "accuracy": {
+        "values": [
+          87.96296296296296,
+          86.11111111111111,
+          87.96296296296296
+        ],
+        "mean": 87.34567901234568,
+        "std": 1.069167165165971
+      },
+      "eta_ns": {
+        "values": [
+          0.18434881418943405,
+          0.2869910039007664,
+          0.19802666455507278
+        ],
+        "mean": 0.22312216088175774,
+        "std": 0.05573322823142651
+      },
+      "eta_div": {
+        "values": [
+          0.08849938400089741,
+          0.09202826395630836,
+          0.16658823192119598
+        ],
+        "mean": 0.11570529329280059,
+        "std": 0.04410122822587501
+      },
+      "decoder_parameters": {
+        "values": [
+          1230708,
+          1230708,
+          1230708
+        ],
+        "mean": 1230708.0,
+        "std": 0.0
+      }
+    },
+    "linear": {
+      "accuracy": {
+        "values": [
+          88.88888888888889,
+          85.18518518518519,
+          87.96296296296296
+        ],
+        "mean": 87.34567901234568,
+        "std": 1.9274685180241926
+      },
+      "eta_ns": {
+        "values": [
+          0.4691850244998932,
+          0.31813742965459824,
+          0.44112859666347504
+        ],
+        "mean": 0.4094836836059888,
+        "std": 0.08034235725287746
+      },
+      "eta_div": {
+        "values": [
+          0.03306666016578674,
+          0.06587293837219477,
+          0.01934858737513423
+        ],
+        "mean": 0.039429395304371916,
+        "std": 0.023905901107409897
+      },
+      "decoder_parameters": {
+        "values": [
+          19021824,
+          19021824,
+          19021824
+        ],
+        "mean": 19021824.0,
+        "std": 0.0
+      }
+    }
+  }
+}

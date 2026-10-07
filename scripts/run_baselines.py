@@ -7,6 +7,7 @@ import json
 import random
 import sys
 import time
+from dataclasses import asdict
 from pathlib import Path
 
 import numpy as np
@@ -23,11 +24,13 @@ sys.path.insert(0, str(ROOT))
 from src.baselines.cnn import SimpleCNN
 from src.config import PINoPropConfig
 from src.data.hit_dataset import create_hit_dataloaders
-from src.decoder import TemporalPhysicsDecoder
 from src.baselines.noprop_reference import ReferenceNoProp3D, ContinuousNoProp3D
 from src.noprop.model import NoPropModel
 from src.physics.temporal_ns_loss import TemporalNSPhysicsLoss
 from src.training.local_trainer import configure_torch
+from scripts.experiment_protocol import (ExperimentProtocol, add_protocol_arguments,
+                                        load_run, make_decoder, protocol_from_args,
+                                        protect_legacy_output, validate_metadata)
 
 REGIONS = ('low_enstrophy', 'high_enstrophy')
 SEEDS = (42, 123, 456)
@@ -39,21 +42,14 @@ def seed_all(seed):
         torch.cuda.manual_seed_all(seed)
 
 
-def make_config(region, coefficients=None):
+def make_config(region, coefficients=None, protocol=None):
+    protocol = protocol or ExperimentProtocol()
     config = PINoPropConfig()
-    config.device = 'cuda' if torch.cuda.is_available() else 'cpu'
-    config.data.data_dir = 'data/generated_hit_ns'
-    config.data.cache_dir = 'data/cache_hit_ns'
+    protocol.apply_config(config)
     config.data.regions = [region]
-    config.data.subdomain_size = 16
-    config.data.n_subdomains = 64
-    config.data.n_classes = 5
-    config.data.batch_size = 32
-    config.noprop.normalize_condition = True
     config.physics.n_time = 9
     config.physics.beta = 4.0
     config.physics.n_test_functions = 8
-    config.physics.physics_grid_size = 16
     config.physics.condition_coefficients = coefficients
     config.physics.use_full_ns = True
     config.physics.use_continuity = True
@@ -74,7 +70,8 @@ def evaluate_classifier(model, loader, device):
 
 def train_cnn(region, seed, loaders, config, epochs=40):
     seed_all(seed); device = torch.device(config.device)
-    model = SimpleCNN(4, 5, 16).to(device)
+    model = SimpleCNN(config.data.n_channels, config.data.n_classes,
+                      config.data.subdomain_size).to(device)
     optimizer = torch.optim.AdamW(model.parameters(), lr=1e-3, weight_decay=1e-4)
     best_accuracy, best_state = -1.0, None
     if device.type == 'cuda': torch.cuda.reset_peak_memory_stats()
@@ -245,7 +242,7 @@ def evaluate_global(model, decoder, physics, loader, device, include_physics=Fal
 def train_global_physics(region, seed, loaders, config, artifact, epochs=30):
     seed_all(seed); device = torch.device(config.device)
     model = GlobalPhysicsClassifier(config).to(device)
-    decoder = TemporalPhysicsDecoder(128, 32, 9, 4).to(device)
+    decoder = make_decoder(config).to(device)
     physics = TemporalNSPhysicsLoss(config, artifact).to(device)
     optimizer = torch.optim.AdamW(
         list(model.parameters())+list(decoder.parameters()), lr=1e-3,
@@ -264,7 +261,7 @@ def train_global_physics(region, seed, loaders, config, artifact, epochs=30):
             physical_loss, _ = physics(decoded)
             loss = (F.cross_entropy(model.head(condition), labels)
                     + 0.05*F.mse_loss(decoded, sequence)
-                    + 0.01*physical_loss)
+                    + config.physics.lambda_weight*physical_loss)
             loss.backward(); torch.nn.utils.clip_grad_norm_(
                 list(model.parameters())+list(decoder.parameters()), 1.0)
             optimizer.step()
@@ -316,18 +313,28 @@ def summarize(records, key):
             'std': float(np.std(values, ddof=1)) if len(values) > 1 else 0.0}
 
 
-def main():
+def build_parser():
     parser = argparse.ArgumentParser()
+    add_protocol_arguments(parser)
     parser.add_argument('--overwrite', action='store_true')
+    parser.add_argument('--baselines-only', action='store_true',
+                        help='train/aggregate standalone baselines without requiring main NoProp runs')
+    return parser
+
+
+def main():
+    parser = build_parser()
     args = parser.parse_args()
+    protocol = protocol_from_args(args, parser)
     artifact = json.loads((ROOT/'outputs/spider/full_ns_equation.json').read_text())
     coefficients = artifact['equation']['coefficients'][1:4]
     all_records = {region: {} for region in REGIONS}
     for region in REGIONS:
-        config = make_config(region, coefficients)
+        config = make_config(region, coefficients, protocol)
         configure_torch(config)
         loaders = create_hit_dataloaders(config)[region]
         for seed in SEEDS:
+            config.seed = seed
             for name, function in (
                 ('noprop_reference', lambda: train_reference_noprop(
                     region, seed, loaders, config)),
@@ -338,34 +345,38 @@ def main():
                     region, seed, loaders, config, artifact)),
                 ('spider_rate_classifier', lambda: spider_rate_classifier(
                     region, seed, loaders, coefficients))):
-                path = ROOT/'outputs/runs'/f'full_ns_v4_{name}_{region}_seed{seed}'/'metrics.json'
+                path = (ROOT/'outputs/runs'/
+                        protocol.baseline_run_id(name, region, seed)/'metrics.json')
                 if path.exists() and not args.overwrite:
                     record = json.loads(path.read_text())
+                    validate_metadata(record.get('experiment_protocol', {}), protocol,
+                                      legacy_ok=True)
+                    if record.get('region') != region or record.get('seed') != seed:
+                        raise ValueError(f'baseline identity mismatch: {path}')
                 else:
+                    protect_legacy_output(path, protocol)
                     print('run', name, region, seed, flush=True)
                     record = function(); path.parent.mkdir(parents=True, exist_ok=True)
+                    record['experiment_protocol'] = protocol.metadata()
                     path.write_text(json.dumps(record, indent=2))
+                    (path.parent/'config.json').write_text(
+                        json.dumps(asdict(config), indent=2), encoding='utf-8')
                 all_records[region].setdefault(name, []).append(record)
 
-        for name, source in (('noprop_no_equation', 'none'),
+        main_methods = (() if args.baselines_only else
+                        (('noprop_no_equation', 'none'),
                              ('noprop_analytic_ns', 'analytic'),
-                             ('pi_noprop', 'discovered')):
+                             ('pi_noprop', 'discovered')))
+        for name, source in main_methods:
             records = []
-            weight = '0' if source == 'none' else '0p01'
             for seed in SEEDS:
                 path = (ROOT/'outputs/runs'/
-                        f'full_ns_v4_{source}_{region}_lambda{weight}_seed{seed}'/
+                        protocol.run_id(source, region, seed)/
                         'metrics.json')
-                raw = json.loads(path.read_text())
-                checkpoint = torch.load(path.with_name('checkpoint.pt'),
-                                        map_location='cpu', weights_only=False)
-                checkpoint_config = checkpoint['config']
+                _, checkpoint_config, raw = load_run(
+                    path.parent, protocol, source=source, region=region, seed=seed)
                 counted_model = NoPropModel(checkpoint_config)
-                counted_decoder = TemporalPhysicsDecoder(
-                    checkpoint_config.decoder.latent_dim,
-                    checkpoint_config.decoder.base_channels,
-                    checkpoint_config.physics.n_time,
-                    checkpoint_config.decoder.output_channels)
+                counted_decoder = make_decoder(checkpoint_config)
                 records.append({
                     'method': name, 'region': region, 'seed': seed,
                     'accuracy': raw['test']['accuracy'],
@@ -377,13 +388,14 @@ def main():
                 })
             all_records[region][name] = records
 
-    aggregate = {'schema_version': 3, 'protocol': {'seeds': list(SEEDS),
+    aggregate = {'schema_version': 5, 'protocol': {**protocol.metadata(), 'seeds': list(SEEDS),
                  'trajectory_disjoint': True,
-                 'model_revision': 'trainable-physics-condition-fusion',
+                 'model_revision': protocol.model_revision,
+                 'readout': 'cosine similarity to frozen label embeddings',
                  'reference_noprop': 'one-hot, independent 3-D encoder per local block',
                  'noprop_ct': 'continuous conditional flow matching; RK4 inference',
-                 'unaffected_baselines': [
-                     'cnn_bp', 'global_physics_bp', 'spider_rate_classifier']},
+                 'label_and_physics_target': 'centred target cube',
+                 'global_bp_lambda_weight': protocol.lambda_phys},
                  'results': {}}
     for region, methods in all_records.items():
         aggregate['results'][region] = {}
@@ -392,7 +404,8 @@ def main():
                 key: summarize(records, key) for key in
                 ('accuracy', 'eta_ns', 'eta_div', 'train_seconds',
                  'peak_memory_mb', 'parameters')}
-    output = ROOT/'outputs/aggregate/full_ns_baselines.json'
+    output = protocol.aggregate_path(ROOT, 'baselines')
+    output.parent.mkdir(parents=True, exist_ok=True)
     output.write_text(json.dumps(aggregate, indent=2))
     print(json.dumps(aggregate, indent=2), flush=True)
 

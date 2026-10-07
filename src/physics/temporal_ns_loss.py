@@ -117,61 +117,76 @@ class TemporalNSPhysicsLoss(nn.Module):
         eta_div = div_residual/div_scale
         return eta_ns, eta_div, residual, terms
 
-    def additional_residuals(self, fields):
-        """Artifact-derived pressure-Poisson and kinetic-energy balances."""
+    def additional_residuals(self, fields, compute_pressure_poisson=True,
+                             compute_energy=True):
+        """Compute only the requested artifact-derived residuals."""
         physical = self._crop(fields).float()*self.field_stds + self.field_means
         velocity, pressure = physical[:, :, :3], physical[:, :, 3]
         points = velocity.shape[1]*velocity.shape[-1]**3
         c_time, c_conv, c_pressure, c_laplacian = self.coefficients
 
-        pp_pressure = torch.einsum(
-            'btxyz,kt,kxyz->bk', pressure, self.w_time,
-            self.lap_space)/points
-        pp_convection = torch.einsum(
-            'btixyz,btjxyz,kt,kijxyz->bk', velocity, velocity,
-            self.w_time, self.hessian_space)/points
-        pp_parts = torch.stack([
-            c_pressure*pp_pressure, c_conv*pp_convection], dim=-1)
-        eta_pp = pp_parts.sum(-1)/pp_parts.abs().sum(-1).clamp_min(1e-7)
+        eta_pp = None
+        if compute_pressure_poisson:
+            pp_pressure = torch.einsum(
+                'btxyz,kt,kxyz->bk', pressure, self.w_time,
+                self.lap_space)/points
+            pp_convection = torch.einsum(
+                'btixyz,btjxyz,kt,kijxyz->bk', velocity, velocity,
+                self.w_time, self.hessian_space)/points
+            pp_parts = torch.stack([
+                c_pressure*pp_pressure, c_conv*pp_convection], dim=-1)
+            eta_pp = (pp_parts.sum(-1)
+                      / pp_parts.abs().sum(-1).clamp_min(1e-7))
 
-        kinetic = 0.5*velocity.square().sum(dim=2)
-        energy_time = -torch.einsum(
-            'btxyz,kt,kxyz->bk', kinetic, self.dt_weight,
-            self.w_space)/points
-        energy_convection = -torch.einsum(
-            'btxyz,btixyz,kt,kixyz->bk', kinetic, velocity,
-            self.w_time, self.grad_space)/points
-        energy_pressure = -torch.einsum(
-            'btxyz,btixyz,kt,kixyz->bk', pressure, velocity,
-            self.w_time, self.grad_space)/points
-        energy_laplacian = torch.einsum(
-            'btxyz,kt,kxyz->bk', kinetic, self.w_time,
-            self.lap_space)/points
-        gradients = torch.stack([
-            torch.gradient(velocity, spacing=self.dx, dim=axis+3)[0]
-            for axis in range(3)], dim=3)
-        dissipation = torch.einsum(
-            'btijxyz,kt,kxyz->bk', gradients.square(), self.w_time,
-            self.w_space)/points
-        energy_parts = torch.stack([
-            c_time*energy_time,
-            c_conv*energy_convection,
-            c_pressure*energy_pressure,
-            c_laplacian*energy_laplacian,
-            -c_laplacian*dissipation,
-        ], dim=-1)
-        eta_energy = (energy_parts.sum(-1)
-                      / energy_parts.abs().sum(-1).clamp_min(1e-7))
+        eta_energy = None
+        if compute_energy:
+            kinetic = 0.5*velocity.square().sum(dim=2)
+            energy_time = -torch.einsum(
+                'btxyz,kt,kxyz->bk', kinetic, self.dt_weight,
+                self.w_space)/points
+            energy_convection = -torch.einsum(
+                'btxyz,btixyz,kt,kixyz->bk', kinetic, velocity,
+                self.w_time, self.grad_space)/points
+            energy_pressure = -torch.einsum(
+                'btxyz,btixyz,kt,kixyz->bk', pressure, velocity,
+                self.w_time, self.grad_space)/points
+            energy_laplacian = torch.einsum(
+                'btxyz,kt,kxyz->bk', kinetic, self.w_time,
+                self.lap_space)/points
+            gradients = torch.stack([
+                torch.gradient(velocity, spacing=self.dx, dim=axis+3)[0]
+                for axis in range(3)], dim=3)
+            dissipation = torch.einsum(
+                'btijxyz,kt,kxyz->bk', gradients.square(), self.w_time,
+                self.w_space)/points
+            energy_parts = torch.stack([
+                c_time*energy_time,
+                c_conv*energy_convection,
+                c_pressure*energy_pressure,
+                c_laplacian*energy_laplacian,
+                -c_laplacian*dissipation,
+            ], dim=-1)
+            eta_energy = (energy_parts.sum(-1)
+                          / energy_parts.abs().sum(-1).clamp_min(1e-7))
         return eta_pp, eta_energy
 
-    def forward(self, fields):
+    def forward(self, fields, include_disabled_metrics=False):
         eta_ns, eta_div, residual, _ = self.normalized_residuals(fields)
         loss_ns = eta_ns.square().mean()
         loss_div = eta_div.square().mean()
         total = loss_ns + self.divergence_weight*loss_div
-        eta_pp, eta_energy = self.additional_residuals(fields)
-        loss_pp = eta_pp.square().mean()
-        loss_energy = eta_energy.square().mean()
+        compute_pp = self.use_pressure_poisson or include_disabled_metrics
+        compute_energy = self.use_energy or include_disabled_metrics
+        if compute_pp or compute_energy:
+            eta_pp, eta_energy = self.additional_residuals(
+                fields, compute_pressure_poisson=compute_pp,
+                compute_energy=compute_energy)
+        else:
+            eta_pp, eta_energy = None, None
+        zero = loss_ns.new_zeros(())
+        loss_pp = eta_pp.square().mean() if eta_pp is not None else zero
+        loss_energy = (eta_energy.square().mean()
+                       if eta_energy is not None else zero)
         if self.use_pressure_poisson:
             total = total+self.pressure_poisson_weight*loss_pp
         if self.use_energy:
@@ -183,12 +198,14 @@ class TemporalNSPhysicsLoss(nn.Module):
             'eta_div': eta_div.square().mean().sqrt().detach(),
             'loss_pp': loss_pp.detach(),
             'loss_energy': loss_energy.detach(),
-            'eta_pp': eta_pp.square().mean().sqrt().detach(),
-            'eta_energy': eta_energy.square().mean().sqrt().detach(),
+            'eta_pp': loss_pp.sqrt().detach(),
+            'eta_energy': loss_energy.sqrt().detach(),
             'raw_ns': residual.square().mean().sqrt().detach(),
         }
 
     @torch.no_grad()
     def evaluate_metrics(self, fields):
-        _, metrics = self(fields)
+        # Evaluation reports every residual even when an auxiliary relation is
+        # disabled during training.
+        _, metrics = self(fields, include_disabled_metrics=True)
         return {key: float(value.cpu()) for key, value in metrics.items()}

@@ -16,8 +16,9 @@ from src.data.hit_dataset import REGION_NAMES, build_learning_cache
 
 
 def main():
-    cache = ROOT/'data/cache_hit_ns'
-    build_learning_cache(ROOT/'data/generated_hit_ns', cache)
+    cache = ROOT/'data/cache_hit_ns_input32_target16'
+    build_learning_cache(ROOT/'data/generated_hit_ns', cache,
+                         spatial_size=32, target_spatial_size=16)
     metadata = json.loads((cache/'metadata.json').read_text(encoding='utf-8'))
     labels = np.load(cache/'labels.npy')
     splits = np.load(cache/'splits.npy')

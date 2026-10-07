@@ -48,20 +48,25 @@ def main():
     require(artifact['metrics']['support_separation_ratio'] >= 1.25,
             'selected support is separated from the next candidate')
 
-    cache = Path('data/cache_hit_ns')
-    if cache.exists() and (cache/'trajectory_ids.npy').exists():
-        trajectory_ids = np.load(cache/'trajectory_ids.npy')
-        splits = np.load(cache/'splits.npy')
-        groups = [set(trajectory_ids[splits == code].tolist()) for code in range(3)]
-        require(not groups[0] & groups[1] and not groups[0] & groups[2]
-                and not groups[1] & groups[2],
-                'learning cache preserves trajectory-disjoint splits')
-        metadata = json.loads((cache/'metadata.json').read_text(encoding='utf-8'))
-        require(metadata['target'] ==
-                'future local relative kinetic-energy decay quantile',
-                'classification target is predictive and provenance-recorded')
-        require((cache/'ns_terms.npy').exists(),
-                'target-free first-frame NS energy terms are cached')
+    cache = Path('data/cache_hit_ns_input32_target16')
+    require(cache.exists(), '32^3-input/16^3-target learning cache exists')
+    require((cache/'trajectory_ids.npy').exists(),
+            'size-specific learning cache contains trajectory ids')
+    trajectory_ids = np.load(cache/'trajectory_ids.npy')
+    splits = np.load(cache/'splits.npy')
+    groups = [set(trajectory_ids[splits == code].tolist()) for code in range(3)]
+    require(not groups[0] & groups[1] and not groups[0] & groups[2]
+            and not groups[1] & groups[2],
+            '32^3 learning cache preserves trajectory-disjoint splits')
+    metadata = json.loads((cache/'metadata.json').read_text(encoding='utf-8'))
+    require(metadata['input_spatial_size'] == 32 and
+            metadata['target_spatial_size'] == 16,
+            'learning cache records 32^3 input with centred 16^3 target')
+    require(metadata['target'] ==
+            'future local relative kinetic-energy decay quantile on the centred target cube',
+            'classification target is predictive and provenance-recorded')
+    require((cache/'ns_terms.npy').exists(),
+            'target-free first-frame NS energy terms are cached')
 
     audit_path = Path('outputs/aggregate/hit_predictability_audit.json')
     audit = json.loads(audit_path.read_text(encoding='utf-8'))
@@ -71,11 +76,21 @@ def main():
         require(record['first_frame_discovered_ns_accuracy']['test'] > 80,
                 f'{region} first-frame NS oracle exceeds 80% test accuracy')
 
-    aggregate = json.loads(Path('outputs/aggregate/full_ns_results.json')
-                           .read_text(encoding='utf-8'))
+    aggregate = json.loads(Path(
+        'outputs/aggregate/full_ns_v5_input32_target16_residual_warmstart_results.json'
+    ).read_text(encoding='utf-8'))
     require(aggregate['protocol']['model_revision'] ==
-            'trainable-physics-condition-fusion',
-            'aggregate uses trained physics-condition fusion')
+            'cached-residual-warmstart-physics-condition-prototype-readout',
+            'aggregate uses the 32^3 residual-warm-start PI-NoProp revision')
+    require(aggregate['protocol']['readout'] ==
+            'cosine similarity to frozen label embeddings',
+            'aggregate records the parameter-free prototype readout')
+    require(aggregate['protocol']['input_spatial_size'] == 32 and
+            aggregate['protocol']['target_spatial_size'] == 16,
+            'aggregate records the 32^3-input/16^3-target protocol')
+    require(aggregate['protocol']['spatial_context_mode'] ==
+            'residual_warmstart',
+            'aggregate records the residual context encoder')
     for region, record in aggregate['results'].items():
         discovered_accuracy = record['discovered']['accuracy']['mean']
         none_accuracy = record['none']['accuracy']['mean']

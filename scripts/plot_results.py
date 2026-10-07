@@ -1,8 +1,15 @@
-"""Generate manuscript figures directly from the current full-NS artifacts."""
+"""Render the main-text and appendix figures via matched standalone scripts.
+
+The CLI defaults to the v5 input32/target16 protocol. Historical drawing
+functions remain available for compatibility, but main never calls them.
+"""
 from __future__ import annotations
 
+import argparse
 import json
 from pathlib import Path
+import subprocess
+import sys
 
 import matplotlib.pyplot as plt
 import numpy as np
@@ -11,7 +18,31 @@ from matplotlib.patches import FancyArrowPatch, FancyBboxPatch
 
 ROOT = Path(__file__).resolve().parents[1]
 FIGURES = ROOT/'paper/figures'
-FIGURES.mkdir(parents=True, exist_ok=True)
+FIGURE_CODE = ROOT/'paper/figure_code'
+if str(FIGURE_CODE) not in sys.path:
+    sys.path.insert(0, str(FIGURE_CODE))
+
+from figure_protocol import (FigureProtocol, PROTOCOLS, V5, load_aggregate,
+                             read_json, validate_metadata)
+
+# Manuscript order. False also marks the current-code architecture schematic,
+# whose geometry is fixed to v5; its script emits a clearly labelled diagram.
+PAPER_FIGURES = (
+    ('fig_framework', False),
+    ('fig_data_samples', True),
+    ('fig_ablation', True),
+    ('fig_noise', True),
+    ('fig_latent_metrics', True),
+    ('fig_dns_quality', False),
+    ('fig_training_convergence', True),
+    ('fig_spider_noise', False),
+    ('fig_latent_analysis', True),
+)
+PAPER_AGGREGATES = ('results', 'noise', 'lambda_ablation',
+                    'decoder_ablation', 'latent_analysis')
+REGIONS = ('low_enstrophy', 'high_enstrophy')
+SEEDS = (42, 123, 456)
+
 COLORS = {'none': '#8b95a5', 'analytic': '#e99b42', 'discovered': '#2b7bbb',
           'green': '#3a9d72', 'red': '#c44e52', 'navy': '#274c77'}
 
@@ -24,7 +55,33 @@ def style():
     })
 
 
+def box_axes(axis):
+    """Use a visible, consistent four-sided frame for a manuscript panel."""
+    for spine in axis.spines.values():
+        spine.set_visible(True)
+        spine.set_color('#334155')
+        spine.set_linewidth(.85)
+
+
+def place_panel_label_left_of_title(fig, axis, label):
+    """Place a panel marker immediately to the left of the centered title."""
+    fig.canvas.draw()
+    renderer = fig.canvas.get_renderer()
+    title_bbox = axis.title.get_window_extent(renderer=renderer)
+    marker = axis.text(0, 0, label, transform=axis.transAxes,
+                       ha='right', va='center', fontsize=10.5,
+                       fontweight='bold', clip_on=False)
+    marker.set_in_layout(False)
+    fig.canvas.draw()
+    marker_bbox = marker.get_window_extent(renderer=renderer)
+    x_px = title_bbox.x0 - marker_bbox.width - 5
+    y_px = title_bbox.y0 + .5 * title_bbox.height
+    x_axes, y_axes = axis.transAxes.inverted().transform((x_px, y_px))
+    marker.set_position((x_axes, y_axes))
+
+
 def save(fig, name):
+    FIGURES.mkdir(parents=True, exist_ok=True)
     fig.savefig(FIGURES/name, dpi=240, bbox_inches='tight', facecolor='white')
     plt.close(fig)
 
@@ -51,7 +108,7 @@ def framework():
             ha='center', color='#475569')
     ax.text(.70, .18, r'$\partial_tu+c_2(u\cdot\nabla)u+c_3\nabla p+c_4\nabla^2u$',
             ha='center', color='#475569')
-    save(fig, 'fig_framework.png')
+    save(fig, 'fig_framework.pdf')
 
 
 def local_update():
@@ -63,7 +120,7 @@ def local_update():
         (.28, .38, .18, .27, 'Sampled block $J$\nonly optimizer stepped', '#3d9967'),
         (.55, .55, .18, .25, 'Frozen temporal decoder\n$9\\times4\\times16^3$', '#dd762d'),
         (.55, .16, .18, .24, 'Local objective\n$T(\\mathcal{L}_{diff}+\\lambda\\mathcal{L}_{NS})$', '#c74e53'),
-        (.81, .55, .17, .25, 'Detached $z_T$\nclassifier', '#39739d'),
+        (.81, .55, .17, .25, 'Prototype readout\nfrom $z_T$', '#39739d'),
     ]
     for x,y,w,h,label,color in items:
         ax.add_patch(FancyBboxPatch((x,y),w,h,boxstyle='round,pad=.018',
@@ -76,10 +133,10 @@ def local_update():
         ax.add_patch(FancyArrowPatch(start,end,arrowstyle='-|>',mutation_scale=13,
                                     linewidth=1.7,color=color))
     ax.text(.37,.18,'All other blocks: no graph, no gradient',ha='center',color='#64748b')
-    ax.text(.895,.28,'No classifier-to-block\nor cross-block gradient',ha='center',
+    ax.text(.895,.28,'No readout parameters\nor cross-block gradient',ha='center',
             color=COLORS['red'],weight='bold')
     ax.set_title('Strictly local full-NS block update',fontsize=15,weight='bold')
-    save(fig, 'fig_local_training.png')
+    save(fig, 'fig_local_training.pdf')
 
 
 def dns_quality(manifest):
@@ -99,6 +156,8 @@ def dns_quality(manifest):
     fig, axes = plt.subplots(1, 2, figsize=(11.4, 4.0),
                              gridspec_kw={'width_ratios': (1.16, 1)},
                              constrained_layout=True)
+    for axis in axes:
+        box_axes(axis)
 
     ax = axes[0]
     for curve in energy:
@@ -128,9 +187,8 @@ def dns_quality(manifest):
             transform=ax.transAxes, fontsize=8.2, va='top',
             bbox={'boxstyle': 'round,pad=.35', 'facecolor': 'white',
                   'edgecolor': '#cbd5e1', 'alpha': .92})
-    ax.legend(frameon=False, loc='upper right', fontsize=7.8)
-    ax.text(-.12, 1.06, '(a)', transform=ax.transAxes, fontsize=11,
-            fontweight='bold')
+    ax.legend(frameon=True, facecolor='white', edgecolor='#94a3b8',
+              framealpha=.92, fancybox=False, loc='upper right', fontsize=7.8)
 
     ax = axes[1]
     trajectory_ids = np.asarray([record['trajectory_id'] for record in records])
@@ -166,42 +224,41 @@ def dns_quality(manifest):
     ax.legend([divergence_line, cfl_line, limit_line],
               [item.get_label() for item in
                (divergence_line, cfl_line, limit_line)],
-              frameon=False, loc='center left', fontsize=7.8)
+              frameon=True, facecolor='white', edgecolor='#94a3b8',
+              framealpha=.92, fancybox=False, loc='center left', fontsize=7.8)
     ax.text(.97, .40,
             (f'max div. = {divergence.max():.2e}\n'
              f'max CFL = {cfl.max():.3f} ({100*cfl.max()/.5:.1f}% of limit)'),
             transform=ax.transAxes, ha='right', va='center', fontsize=8.2,
             bbox={'boxstyle': 'round,pad=.35', 'facecolor': 'white',
                   'edgecolor': '#cbd5e1', 'alpha': .92})
-    ax.text(-.12, 1.06, '(b)', transform=ax.transAxes, fontsize=11,
-            fontweight='bold')
-    save(fig, 'fig_dns_quality.png')
+    place_panel_label_left_of_title(fig, axes[0], '(a)')
+    place_panel_label_left_of_title(fig, axes[1], '(b)')
+    save(fig, 'fig_dns_quality.pdf')
 
 
-def data_samples():
-    root = ROOT/'data/cache_hit_ns'
-    fields = np.load(root/'fields.npy', mmap_mode='r')
-    regions = np.load(root/'regions.npy')
-    fig, axes = plt.subplots(2, 3, figsize=(9.2, 5.5))
-    selected_fields = []
-    for region in (0, 1):
-        index = int(np.flatnonzero(regions == region)[0])
-        selected_fields.append(np.asarray(fields[index, 0]))
-    limit = max(np.max(np.abs(value)) for value in selected_fields)
-    for row, u in enumerate(selected_fields):
-        slices = (u[u.shape[0]//2], u[:, u.shape[1]//2], u[:, :, u.shape[2]//2])
-        for column, value in enumerate(slices):
-            image = axes[row, column].imshow(value.T, origin='lower', cmap='RdBu_r',
-                                             vmin=-limit, vmax=limit)
-            axes[row, column].set_xticks([]); axes[row, column].set_yticks([])
-            if row == 0: axes[row, column].set_title(('x', 'y', 'z')[column]+'-normal')
-        axes[row, 0].set_ylabel(('Low' if row == 0 else 'High')+' enstrophy')
-    fig.colorbar(image, ax=axes, fraction=.025, pad=.025, label=r'$u_x$')
-    fig.suptitle('Trajectory-disjoint decaying-HIT learning samples', y=.98)
-    save(fig, 'fig_data_samples.png')
+def generate_data_samples():
+    import runpy
+
+    runpy.run_path(
+        str(ROOT / 'paper/figure_code/fig_data_samples.py'),
+        run_name='__main__',
+    )
 
 
 def spider_figure(artifact):
+    with plt.rc_context({
+            'font.family': 'serif',
+            'font.serif': ['Times New Roman', 'Times', 'DejaVu Serif'],
+            'font.size': 10.5,
+            'axes.titlesize': 11.5,
+            'axes.labelsize': 10.5,
+            'xtick.labelsize': 9.5,
+            'ytick.labelsize': 9.5}):
+        _spider_figure(artifact)
+
+
+def _spider_figure(artifact):
     expected = np.asarray(
         artifact['expected_equation_for_post_discovery_audit']['coefficients'],
         dtype=float)
@@ -210,489 +267,138 @@ def spider_figure(artifact):
     bootstrap_std = np.asarray(metrics['bootstrap_coefficient_std'], dtype=float)
     labels = [r'$\partial_t\mathbf{u}$', r'$(\mathbf{u}\!\cdot\!\nabla)\mathbf{u}$',
               r'$\nabla p$', r'$\nabla^2\mathbf{u}$']
-    fig, axes = plt.subplots(1, 2, figsize=(11.2, 3.9),
-                             gridspec_kw={'width_ratios': (1.06, 1)},
-                             constrained_layout=True)
+    fig, ax = plt.subplots(figsize=(8.6, 4.9), constrained_layout=False)
+    fig.subplots_adjust(left=.13, right=.97, bottom=.15, top=.90)
 
-    # Signed multiplicative deviations are easier to interpret than bars on a
-    # truncated coefficient-ratio axis, especially for the negative viscosity.
-    relative_deviation = 100*(discovered/expected-1)
-    relative_std = 100*np.abs(bootstrap_std/expected)
-    y = np.arange(len(labels))
-    ax = axes[0]
-    ax.axvline(0, color='#64748b', linewidth=1.2, linestyle='--',
-               label='Analytic DNS coefficient')
-    ax.hlines(y, 0, relative_deviation, color='#bfdbfe', linewidth=5,
-              zorder=1)
-    ax.errorbar(relative_deviation[1:], y[1:], xerr=relative_std[1:],
-                fmt='o', markersize=7, capsize=4, elinewidth=1.5,
-                color=COLORS['discovered'], ecolor='#4f94c5', zorder=3,
-                label=r'SPIDER $\pm$ one bootstrap s.d.')
-    ax.scatter(relative_deviation[0], y[0], marker='D', s=48,
-               color=COLORS['none'], zorder=3)
-    for index, (deviation, coefficient) in enumerate(
-            zip(relative_deviation, discovered)):
-        annotation = ('fixed at 1' if index == 0
-                      else f'{coefficient:.6f}  ({deviation:+.3f}%)')
-        ax.text(deviation+.012, index-.13, annotation, ha='left', va='center',
-                fontsize=8, color='#334155')
-    ax.set_yticks(y, labels)
-    ax.invert_yaxis()
-    ax.set_xlim(-.045, max(relative_deviation[1:])+.12)
-    ax.set_xlabel('Deviation from analytic coefficient (%)')
-    ax.set_title('Coefficient recovery and bootstrap stability', pad=13)
-    ax.grid(axis='x', alpha=.20); ax.grid(axis='y', visible=False)
-    ax.text(.98, .92,
-            (f'maximum error: {100*metrics["max_coefficient_relative_error"]:.3f}%\n'
-             f'acceptance limit: {100*artifact["config"]["max_coefficient_relative_error"]:.0f}%'),
-            transform=ax.transAxes, ha='right', va='top', fontsize=8.2,
-            bbox={'boxstyle': 'round,pad=.35', 'facecolor': '#eff6ff',
-                  'edgecolor': '#bfdbfe', 'alpha': .95})
-    ax.text(-.12, 1.06, '(a)', transform=ax.transAxes, fontsize=11,
-            fontweight='bold')
+    for spine in ax.spines.values():
+        spine.set_visible(True)
+        spine.set_color('#334155')
+        spine.set_linewidth(.85)
 
-    ax = axes[1]
+    # The main plot uses the residual scale; coefficient recovery is shown in
+    # a compact inset so the two metrics retain their distinct units.
     residuals = np.asarray([
         metrics['discovery_eta'], metrics['validation_eta'], metrics['test_eta'],
         metrics['next_best_validation_eta']])
     x = np.arange(4)
     threshold = artifact['config']['max_validation_eta']
-    ax.axhspan(5e-4, threshold, color='#dcfce7', alpha=.55, zorder=0)
-    ax.axhline(threshold, color='#d97706', linestyle='--', linewidth=1.4,
-               label=fr'Acceptance threshold $\eta={threshold:g}$')
-    ax.plot(x[:3], residuals[:3], color=COLORS['green'], linewidth=2.1,
+    ax.axhspan(5e-4, threshold, color='#dcfce7', alpha=.16, zorder=0)
+    ax.axhline(threshold, color='#d97706', linestyle='--', linewidth=1.35,
+               label=fr'Acceptance threshold ($\eta={threshold:g}$)')
+    ax.plot(x[:3], residuals[:3], color=COLORS['green'], linewidth=2.0,
             marker='o', markersize=7, label='Accepted NS support', zorder=3)
-    ax.scatter(x[3], residuals[3], marker='D', s=66, color=COLORS['red'],
+    ax.scatter(x[3], residuals[3], marker='D', s=62, color=COLORS['red'],
                label='Nearest alternative', zorder=3)
     for index, value in enumerate(residuals):
-        ax.annotate(f'{value:.2e}', (index, value), xytext=(0, 9),
+        ax.annotate(f'{value:.2e}', (index, value), xytext=(0, 8),
                     textcoords='offset points', ha='center', va='bottom',
-                    fontsize=7.8, color='#334155')
-    ax.annotate(fr'{metrics["support_separation_ratio"]:.1f}$\times$ separation',
-                xy=(3, residuals[3]), xytext=(2.15, 8.0e-3),
-                arrowprops={'arrowstyle': '->', 'color': COLORS['red'],
-                            'linewidth': 1.1},
-                fontsize=8.2, color=COLORS['red'], ha='center')
-    ax.set_yscale('log'); ax.set_ylim(6e-4, 7e-2)
-    ax.set_xticks(x, ['Discovery\n(9 trajectories)',
-                      'Validation\n(3 trajectories)',
-                      'Test\n(3 trajectories)', 'Nearest\nalternative'])
-    ax.set_ylabel(r'Contribution-normalised weak residual $\eta$')
-    ax.set_title('Trajectory-disjoint support validation', pad=13)
-    ax.grid(axis='y', which='both', alpha=.20); ax.grid(axis='x', visible=False)
-    ax.legend(frameon=False, loc='upper left', fontsize=7.7)
-    ax.text(.97, .30, '100/100 bootstrap refits\nretain all four NS terms',
-            transform=ax.transAxes, ha='right', va='center', fontsize=8.2,
-            bbox={'boxstyle': 'round,pad=.35', 'facecolor': '#f0fdf4',
-                  'edgecolor': '#bbf7d0', 'alpha': .95})
-    ax.text(-.12, 1.06, '(b)', transform=ax.transAxes, fontsize=11,
-            fontweight='bold')
-    save(fig, 'fig_spider.png')
+                    fontsize=8.5, color='#334155')
+    ax.text(2.22, 1.65e-2,
+            fr'{metrics["support_separation_ratio"]:.1f}$\times$ above test',
+            color=COLORS['red'], fontsize=9.0, ha='center', va='center')
+    ax.set_yscale('log')
+    ax.set_ylim(6e-4, 7e-2)
+    ax.set_xlim(-.38, 3.38)
+    ax.set_xticks(x, ['Discovery', 'Validation', 'Test',
+                      'Nearest\nalternative'])
+    ax.set(xlabel='Trajectory split / candidate support',
+           ylabel=r'Contribution-normalised weak residual $\eta$',
+           title='SPIDER equation recovery and trajectory-disjoint validation')
+    ax.grid(axis='y', which='both', alpha=.18)
+    ax.grid(axis='x', visible=False)
+    ax.legend(frameon=False, loc='upper right', fontsize=8.5, ncol=2,
+              handlelength=1.8, columnspacing=1.0)
+
+    # Compact coefficient-recovery inset.
+    relative_deviation = 100*(discovered/expected-1)
+    relative_std = 100*np.abs(bootstrap_std/expected)
+    y = np.arange(len(labels))
+    inset = ax.inset_axes([.13, .62, .36, .25], facecolor='white')
+    for spine in inset.spines.values():
+        spine.set_visible(True)
+        spine.set_color('#64748b')
+        spine.set_linewidth(.7)
+    inset.axvline(0, color='#64748b', linewidth=1.0, linestyle='--')
+    inset.errorbar(relative_deviation[1:], y[1:], xerr=relative_std[1:],
+                   fmt='o', markersize=5.5, capsize=2.5, elinewidth=1.0,
+                   color=COLORS['discovered'], ecolor='#4f94c5', zorder=3)
+    inset.scatter(relative_deviation[0], y[0], marker='D', s=38,
+                  color=COLORS['none'], zorder=3)
+    for index, (deviation, coefficient) in enumerate(
+            zip(relative_deviation, discovered)):
+        annotation = ('fixed at 1' if index == 0
+                      else f'{coefficient:.4f}')
+        inset.text(deviation+.012, index-.11, annotation, ha='left',
+                   va='center', fontsize=7.2, color='#334155')
+    inset.set_yticks(y, labels)
+    inset.invert_yaxis()
+    inset.set_xlim(-.045, max(relative_deviation[1:])+.13)
+    inset.set_xlabel('Relative coefficient error (%)', fontsize=7.3, labelpad=1)
+    inset.set_title('Coefficient recovery', fontsize=8.8, pad=2)
+    inset.tick_params(axis='both', labelsize=6.8, length=2)
+    inset.grid(axis='x', alpha=.18)
+    inset.grid(axis='y', visible=False)
+    save(fig, 'fig_spider.pdf')
 
 
 def result_figures(aggregate):
-    regions = ('low_enstrophy', 'high_enstrophy')
-    methods = ('none', 'analytic', 'discovered')
-    labels = ('No physics', 'Analytic NS', 'Discovered NS')
-    fig, axes = plt.subplots(1, 3, figsize=(11.2, 3.65),
-                             gridspec_kw={'width_ratios': (1.16, 1, 1)},
-                             constrained_layout=True)
-    x = np.arange(3)
-    region_styles = (
-        ('low_enstrophy', '#6baed6', 'o', 'Low enstrophy'),
-        ('high_enstrophy', '#2171b5', 's', 'High enstrophy'))
-    for axis, metric, title in zip(
-            axes, ('accuracy', 'eta_ns', 'eta_div'),
-            ('Future-decay classification', 'Full-NS consistency',
-             'Continuity consistency')):
-        axis.axvspan(1.67, 2.33, color='#dcfce7', alpha=.48, zorder=0)
-        for region, colour, marker, label in region_styles:
-            means = np.asarray([aggregate['results'][region][method][metric]['mean']
-                                for method in methods])
-            stds = np.asarray([aggregate['results'][region][method][metric]['std']
-                               for method in methods])
-            axis.errorbar(x, means, yerr=stds, color=colour, marker=marker,
-                          markersize=6.5, linewidth=1.8, capsize=4,
-                          label=label, zorder=3)
-        axis.set_xticks(x, labels, rotation=15)
-        axis.set_title(title, pad=11)
-        axis.grid(axis='y', alpha=.20); axis.grid(axis='x', visible=False)
-    axes[0].axhline(20, color='#64748b', linestyle=':', linewidth=1.2,
-                    label='Five-class chance')
-    axes[0].set_ylabel('Test accuracy (%)')
-    axes[0].set_ylim(8, 94)
-    axes[0].annotate('+69.14 pp', xy=(2, 86.73), xytext=(.38, 69),
-                     arrowprops={'arrowstyle': '->', 'color': '#3a9d72',
-                                 'linewidth': 1.1},
-                     color='#287a56', fontsize=8, ha='center')
-    axes[0].annotate('+65.48 pp', xy=(2, 82.94), xytext=(1.05, 57),
-                     arrowprops={'arrowstyle': '->', 'color': '#2171b5',
-                                 'linewidth': 1.1},
-                     color='#175a91', fontsize=8, ha='center')
-    axes[0].legend(frameon=False, fontsize=7.7, loc='lower right')
-    axes[1].set_ylabel(r'$\eta_{\mathrm{NS}}$ (lower is better)')
-    axes[1].set_ylim(0, 1.08)
-    axes[2].set_ylabel(r'$\eta_{\mathrm{div}}$ (lower is better)')
-    axes[2].set_ylim(0, .63)
-    for index, axis in enumerate(axes):
-        axis.text(-.13, 1.06, f'({chr(97+index)})', transform=axis.transAxes,
-                  fontsize=10.5, fontweight='bold')
-    save(fig, 'fig_main_results.png')
+    """Run the standalone manuscript main-results figure script."""
+    import runpy
 
-    fig, axes = plt.subplots(1, 2, figsize=(7.8, 3.3))
-    for axis, key, title, ylabel in (
-        (axes[0], 'block_seconds', 'Local block time', 'Seconds'),
-        (axes[1], 'peak_memory_mb', 'Peak allocated memory', 'MB')):
-        x=np.arange(3); width=.34
-        for ridx, region in enumerate(regions):
-            values=[aggregate['results'][region][m][key]['mean'] for m in methods]
-            axis.bar(x+(ridx-.5)*width, values, width,
-                     color=('#6baed6' if ridx == 0 else '#2171b5'),
-                     label=('Low' if ridx == 0 else 'High'))
-        axis.set_xticks(x, labels, rotation=18); axis.set_title(title); axis.set_ylabel(ylabel)
-    axes[0].legend(frameon=False); fig.tight_layout(); save(fig, 'fig_efficiency.png')
+    runpy.run_path(
+        str(ROOT / 'paper/figure_code/fig_main_results.py'),
+        run_name='__main__',
+    )
 
 
 def training_convergence_figure():
-    """Aggregate current v4 histories without retraining or test-set tuning."""
-    regions = ('low_enstrophy', 'high_enstrophy')
-    seeds = (42, 123, 456)
-    local_curves = {key: [] for key in ('loss', 'diff', 'phys')}
-    classifier = {
-        region: {'train': [], 'val': []} for region in regions}
-    for region in regions:
-        for seed in seeds:
-            path = (ROOT/'outputs/runs'/
-                    f'full_ns_v4_discovered_{region}_lambda0p01_seed{seed}'/
-                    'history.npz')
-            if not path.exists():
-                raise FileNotFoundError(f'Missing current v4 history: {path}')
-            with np.load(path, allow_pickle=True) as history:
-                local = history['local'].tolist()
-                classifier_history = history['classifier'].tolist()
-            if len(local) != 1000 or len(classifier_history) != 30:
-                raise ValueError(f'Incomplete v4 history: {path}')
-            for block in range(10):
-                sequence = [record for record in local if record['block'] == block]
-                if len(sequence) != 100:
-                    raise ValueError(f'Block {block} is incomplete in {path}')
-                for key in local_curves:
-                    values = np.asarray([record[key] for record in sequence], dtype=float)
-                    reference = np.median(values[:10])
-                    local_curves[key].append(values/max(reference, 1e-12))
-            classifier[region]['train'].append(
-                [record['train']['accuracy'] for record in classifier_history])
-            classifier[region]['val'].append(
-                [record['val']['accuracy'] for record in classifier_history])
+    """Run the standalone manuscript figure script."""
+    import runpy
 
-    fig, axes = plt.subplots(1, 2, figsize=(10.8, 3.9),
-                             gridspec_kw={'width_ratios': (1.04, 1)},
-                             constrained_layout=True)
-    ax = axes[0]
-    updates = np.arange(1, 101)
-    curve_styles = (
-        ('loss', COLORS['navy'], 'Total local objective'),
-        ('diff', COLORS['discovered'], 'Diffusion term'),
-        ('phys', COLORS['green'], 'Physics term'))
-    for key, colour, label in curve_styles:
-        values = np.asarray(local_curves[key])
-        median = np.median(values, axis=0)
-        lower, upper = np.quantile(values, [.25, .75], axis=0)
-        ax.fill_between(updates, lower, upper, color=colour, alpha=.14,
-                        linewidth=0)
-        ax.plot(updates, median, color=colour, linewidth=2, label=label)
-    ax.set_yscale('log')
-    ax.set(xlabel='Local updates per block',
-           ylabel='Normalised loss (first 10-update median = 1)',
-           title='Strictly local block optimisation')
-    ax.grid(axis='y', which='both', alpha=.20); ax.grid(axis='x', alpha=.12)
-    ax.legend(frameon=False, fontsize=7.8, loc='lower left')
-    ax.text(.97, .94, 'median and interquartile range\n60 block--seed--region curves',
-            transform=ax.transAxes, ha='right', va='top', fontsize=8,
-            bbox={'boxstyle': 'round,pad=.35', 'facecolor': 'white',
-                  'edgecolor': '#cbd5e1', 'alpha': .93})
-    ax.text(-.12, 1.06, '(a)', transform=ax.transAxes, fontsize=11,
-            fontweight='bold')
-
-    ax = axes[1]
-    epochs = np.arange(1, 31)
-    for region, colour, label in (
-            ('low_enstrophy', '#6baed6', 'Low enstrophy'),
-            ('high_enstrophy', '#2171b5', 'High enstrophy')):
-        train = np.asarray(classifier[region]['train'])
-        validation = np.asarray(classifier[region]['val'])
-        ax.plot(epochs, train.mean(axis=0), color=colour, linestyle='--',
-                linewidth=1.25, alpha=.72, label=f'{label}, train')
-        ax.plot(epochs, validation.mean(axis=0), color=colour, linewidth=2.1,
-                label=f'{label}, validation')
-        validation_std = validation.std(axis=0, ddof=1)
-        ax.fill_between(epochs, validation.mean(axis=0)-validation_std,
-                        validation.mean(axis=0)+validation_std,
-                        color=colour, alpha=.14, linewidth=0)
-    ax.axhline(20, color='#64748b', linestyle=':', linewidth=1.2,
-               label='Five-class chance')
-    ax.set(xlabel='Detached-classifier epoch', ylabel='Accuracy (%)',
-           ylim=(10, 101), title='Classifier convergence after local training')
-    ax.grid(axis='y', alpha=.20); ax.grid(axis='x', alpha=.12)
-    ax.legend(frameon=False, fontsize=7.3, ncol=2, loc='lower right')
-    ax.text(-.12, 1.06, '(b)', transform=ax.transAxes, fontsize=11,
-            fontweight='bold')
-    save(fig, 'fig_training_convergence.png')
+    runpy.run_path(
+        str(ROOT / 'paper/figure_code/fig_training_convergence.py'),
+        run_name='__main__',
+    )
 
 
 def noise_figure(artifact):
-    levels = np.asarray(artifact['protocol']['levels_in_channel_standard_deviations'])
-    positions = np.arange(len(levels))
-    tick_labels = [f'{100*level:g}%' for level in levels]
-    fig, axes = plt.subplots(1, 2, figsize=(10.8, 3.9),
-                             gridspec_kw={'width_ratios': (1.04, 1)},
-                             constrained_layout=True)
-    for axis in axes:
-        axis.axvspan(-.35, 2.35, color='#dcfce7', alpha=.48, zorder=0)
-        axis.axvspan(2.35, 4.35, color='#fef3c7', alpha=.48, zorder=0)
-        axis.axvspan(4.35, 6.35, color='#fee2e2', alpha=.40, zorder=0)
-    for region, colour, marker, region_label in (
-            ('low_enstrophy', '#6baed6', 'o', 'Low enstrophy'),
-            ('high_enstrophy', '#2171b5', 's', 'High enstrophy')):
-        for method, linestyle, method_label, alpha in (
-                ('none', '--', 'No equation', .62),
-                ('discovered', '-', 'PI-NoProp', 1.0)):
-            records = artifact['results'][region][method]
-            accuracy = np.asarray([
-                records[str(float(level))]['accuracy']['mean'] for level in levels])
-            accuracy_std = np.asarray([
-                records[str(float(level))]['accuracy']['std'] for level in levels])
-            eta = np.asarray([
-                records[str(float(level))]['eta_ns']['mean'] for level in levels])
-            eta_std = np.asarray([
-                records[str(float(level))]['eta_ns']['std'] for level in levels])
-            label = f'{method_label}, {region_label.lower()}'
-            axes[0].plot(positions, accuracy, marker=marker, linestyle=linestyle,
-                         color=colour, alpha=alpha, linewidth=2 if method == 'discovered'
-                         else 1.35, markersize=6, label=label)
-            axes[0].fill_between(positions, accuracy-accuracy_std,
-                                 accuracy+accuracy_std, color=colour,
-                                 alpha=.12 if method == 'discovered' else .06,
-                                 linewidth=0)
-            axes[1].plot(positions, eta, marker=marker, linestyle=linestyle,
-                         color=colour, alpha=alpha, linewidth=2 if method == 'discovered'
-                         else 1.35, markersize=6, label=label)
-            axes[1].fill_between(positions, np.maximum(eta-eta_std, 0),
-                                 eta+eta_std, color=colour,
-                                 alpha=.12 if method == 'discovered' else .06,
-                                 linewidth=0)
-    axes[0].axhline(20, color='#64748b', linestyle=':', linewidth=1.25)
-    axes[0].text(6.05, 20.8, 'chance', color='#475569', fontsize=7.8,
-                 ha='right', va='bottom')
-    axes[0].set(xlabel='Observation noise / channel standard deviation',
-                ylabel='Test accuracy (%)', ylim=(10, 94),
-                title='Clean-trained predictive robustness')
-    axes[1].set(xlabel='Observation noise / channel standard deviation',
-                ylabel=r'$\eta_{\mathrm{NS}}$ (lower is better)', ylim=(0, 1.02),
-                title='Decoded-field equation residual')
-    for axis in axes:
-        axis.set_xticks(positions, tick_labels)
-        axis.grid(axis='y', alpha=.20); axis.grid(axis='x', visible=False)
-        axis.text(.13, .96, 'stable', transform=axis.transAxes, ha='center',
-                  va='top', fontsize=7.8, color='#287a56', fontweight='bold')
-        axis.text(.50, .96, 'degradation', transform=axis.transAxes, ha='center',
-                  va='top', fontsize=7.8, color='#9a6700', fontweight='bold')
-        axis.text(.84, .96, 'near chance', transform=axis.transAxes, ha='center',
-                  va='top', fontsize=7.8, color='#a33b3b', fontweight='bold')
-    axes[0].legend(frameon=False, fontsize=7.25, ncol=1,
-                   loc='center left', bbox_to_anchor=(.02, .42))
-    axes[1].annotate('Residual decreases while\nclassification collapses',
-                     xy=(6, artifact['results']['high_enstrophy']['discovered']['1.0']
-                        ['eta_ns']['mean']), xytext=(4.0, .42),
-                     arrowprops={'arrowstyle': '->', 'color': '#c44e52',
-                                 'linewidth': 1.1},
-                     fontsize=8, color='#a33b3b', ha='center')
-    for index, axis in enumerate(axes):
-        axis.text(-.12, 1.06, f'({chr(97+index)})', transform=axis.transAxes,
-                  fontsize=11, fontweight='bold')
-    save(fig, 'fig_noise.png')
+    """Run the standalone manuscript noise-sweep figure script."""
+    import runpy
+
+    runpy.run_path(
+        str(ROOT / 'paper/figure_code/fig_noise.py'),
+        run_name='__main__',
+    )
 
 
 def spider_noise_figure(artifact):
-    levels = np.asarray(artifact['levels_in_field_standard_deviations'], dtype=float)
-    positions = np.arange(len(levels))
-    records = [artifact['levels'][str(float(level))] for level in levels]
-    tick_labels = [f'{100*level:g}%' for level in levels]
-    coefficient_error = 100*np.asarray(
-        [record['max_coefficient_relative_error'] for record in records])
-    bootstrap = 100*np.asarray(
-        [record['bootstrap_support_fraction'] for record in records])
-    discovery_eta = np.asarray([record['discovery_eta'] for record in records])
-    validation_eta = np.asarray([record['validation_eta'] for record in records])
-    test_eta = np.asarray([record['test_eta'] for record in records])
-    passed = np.asarray(
-        [record['validation_passed_under_noise_protocol'] for record in records])
-    protocol = artifact['protocol']
+    """Run the standalone manuscript SPIDER noise-sweep figure script."""
+    import runpy
 
-    fig, axes = plt.subplots(1, 2, figsize=(10.9, 3.9),
-                             constrained_layout=True)
-    for axis in axes:
-        axis.axvspan(-.35, 2.35, color='#dcfce7', alpha=.52, zorder=0)
-        axis.axvspan(2.35, len(levels)-.65, color='#fee2e2', alpha=.34, zorder=0)
-        axis.axvline(2.5, color='#c44e52', linestyle=':', linewidth=1.2)
-
-    ax = axes[0]
-    coefficient_line, = ax.plot(
-        positions, coefficient_error, color=COLORS['discovered'], marker='o',
-        linewidth=2, markersize=6, label='Maximum coefficient error')
-    ax.set_yscale('log'); ax.set_ylim(.01, 1600)
-    coefficient_limit = 100*protocol['max_coefficient_relative_error']
-    ax.axhline(coefficient_limit, color='#d97706', linestyle='--', linewidth=1.3)
-    ax.set_ylabel('Maximum coefficient error (%)', color='#175a91')
-    ax.tick_params(axis='y', colors='#175a91')
-    ax2 = ax.twinx()
-    bootstrap_line, = ax2.plot(
-        positions, bootstrap, color=COLORS['green'], marker='s', linewidth=1.8,
-        markersize=5.5, label='Bootstrap support')
-    bootstrap_limit = 100*protocol['min_bootstrap_support']
-    ax2.axhline(bootstrap_limit, color='#3a9d72', linestyle='--', linewidth=1.2)
-    ax2.set_ylim(0, 108); ax2.set_ylabel('Selected-support bootstrap rate (%)',
-                                         color='#287a56')
-    ax2.tick_params(axis='y', colors='#287a56')
-    ax2.spines['right'].set_visible(True)
-    ax.set_title('Coefficient and support stability', pad=12)
-    ax.legend([coefficient_line, bootstrap_line],
-              ['Maximum coefficient error', 'Selected-support bootstrap'],
-              frameon=False, fontsize=7.6, loc='lower left')
-    ax.text(8.0, coefficient_limit*1.08, f'{coefficient_limit:g}% error limit',
-            color='#9a6700', fontsize=7.3, ha='right', va='bottom')
-    ax2.text(8.0, bootstrap_limit+2, f'{bootstrap_limit:g}% support limit',
-             color='#287a56', fontsize=7.3, ha='right', va='bottom')
-    ax.annotate('first support failure:\nextra kinetic-energy-gradient term',
-                xy=(3, coefficient_error[3]), xytext=(4.7, .12),
-                arrowprops={'arrowstyle': '->', 'color': COLORS['red'],
-                            'linewidth': 1.1},
-                fontsize=7.8, color='#a33b3b', ha='center')
-
-    ax = axes[1]
-    ax.plot(positions, discovery_eta, color='#94a3b8', marker='o', linewidth=1.5,
-            label='Discovery')
-    ax.plot(positions, validation_eta, color=COLORS['discovered'], marker='s',
-            linewidth=2, label='Validation')
-    ax.plot(positions, test_eta, color=COLORS['navy'], marker='^', linewidth=2,
-            label='Held-out test')
-    residual_limit = protocol['max_validation_eta']
-    ax.axhline(residual_limit, color='#d97706', linestyle='--', linewidth=1.3,
-               label=fr'Residual limit $\eta={residual_limit:g}$')
-    ax.set_yscale('log'); ax.set_ylim(2e-5, 1.4)
-    for index, is_passed in enumerate(passed):
-        ax.scatter(index, 4e-5, marker='o' if is_passed else 'x',
-                   s=42, linewidth=1.6,
-                   color=COLORS['green'] if is_passed else COLORS['red'],
-                   zorder=4)
-    ax.text(.02, .06, '● accepted', transform=ax.transAxes, color='#287a56',
-            fontsize=8)
-    ax.text(.23, .06, '× rejected', transform=ax.transAxes, color='#a33b3b',
-            fontsize=8)
-    ax.set_title('Weak-residual validation under discovery noise', pad=12)
-    ax.set_ylabel(r'Weak residual $\eta$')
-    ax.legend(frameon=False, fontsize=7.4, loc='upper left', ncol=2)
-    for axis in axes:
-        axis.set_xticks(positions, tick_labels)
-        axis.set_xlabel('DNS-field noise / field standard deviation')
-        axis.grid(axis='y', which='both', alpha=.20); axis.grid(axis='x', visible=False)
-        if axis is axes[0]:
-            axis.text(.14, .80, 'validated', transform=axis.transAxes,
-                      ha='center', va='top', fontsize=7.8, color='#287a56',
-                      fontweight='bold')
-            axis.text(.68, .96, 'rejected', transform=axis.transAxes,
-                      ha='center', va='top', fontsize=7.8, color='#a33b3b',
-                      fontweight='bold')
-    for index, axis in enumerate(axes):
-        axis.text(-.12, 1.06, f'({chr(97+index)})', transform=axis.transAxes,
-                  fontsize=11, fontweight='bold')
-    save(fig, 'fig_spider_noise.png')
+    runpy.run_path(
+        str(ROOT / 'paper/figure_code/fig_spider_noise.py'),
+        run_name='__main__',
+    )
 
 
 def ablation_figure(lambda_artifact, decoder_artifact):
-    """Plot only metrics from the reproducible 4.5 ablation artifacts."""
-    lambdas = np.asarray(lambda_artifact['protocol']['lambdas'], dtype=float)
-    x = np.arange(len(lambdas))
-    fig, axes = plt.subplots(1, 2, figsize=(10.8, 3.8),
-                             gridspec_kw={'width_ratios': (1.04, 1)},
-                             constrained_layout=True)
-    ax = axes[0]
-    for key, colour, label in (
-            ('accuracy', COLORS['navy'], 'Accuracy'),
-            ('eta_ns', COLORS['discovered'], r'$η_{\mathrm{NS}}$'),
-            ('eta_div', COLORS['green'], r'$η_{\mathrm{div}}$')):
-        means = np.asarray([lambda_artifact['results'][str(float(v))][key]['mean']
-                            for v in lambdas])
-        stds = np.asarray([lambda_artifact['results'][str(float(v))][key]['std']
-                           for v in lambdas])
-        if key == 'accuracy':
-            means = means / 100; stds = stds / 100
-        ax.errorbar(x, means, yerr=stds, marker='o', linewidth=1.8,
-                    markersize=5.5, capsize=3, color=colour, label=label)
-    ax.axhline(.2, color='#64748b', linestyle=':', linewidth=1.1)
-    ax.set_xticks(x, [f'{v:g}' for v in lambdas])
-    ax.set_xlabel(r'Physics-loss weight $λ$')
-    ax.set_ylabel('Accuracy / normalised residual')
-    ax.set_ylim(0, 1.03); ax.set_title('Weight trade-off (low enstrophy)')
-    ax.grid(axis='y', alpha=.20); ax.grid(axis='x', visible=False)
-    ax.legend(frameon=False, fontsize=8)
-    ax.text(-.12, 1.06, '(a)', transform=ax.transAxes, fontsize=11,
-            fontweight='bold')
+    """Run the standalone manuscript ablation figure script."""
+    import runpy
 
-    ax = axes[1]
-    architectures = lambda_artifact.get('protocol', {}).get('architectures',
-                                                              ['linear', 'conv'])
-    architectures = decoder_artifact['protocol']['architectures']
-    labels = ['Linear', 'Convolutional']
-    metrics = ('accuracy', 'eta_ns', 'eta_div')
-    metric_labels = ('Accuracy', r'$η_{\mathrm{NS}}$', r'$η_{\mathrm{div}}$')
-    xpos = np.arange(len(metrics)); width = .32
-    for index, architecture in enumerate(architectures):
-        values = []
-        errors = []
-        for key in metrics:
-            value = decoder_artifact['results'][architecture][key]
-            mean, std = value['mean'], value['std']
-            if key == 'accuracy': mean, std = mean/100, std/100
-            values.append(mean); errors.append(std)
-        ax.bar(xpos+(index-.5)*width, values, width, yerr=errors,
-               capsize=3, color=('#94a3b8' if architecture == 'linear'
-                                 else COLORS['discovered']),
-               label=labels[index])
-    ax.set_xticks(xpos, metric_labels)
-    ax.set_ylabel('Accuracy / normalised residual')
-    ax.set_ylim(0, 1.03); ax.set_title('Decoder architecture (λ=0.01)')
-    ax.grid(axis='y', alpha=.20); ax.grid(axis='x', visible=False)
-    ax.legend(frameon=False, fontsize=8)
-    ax.text(-.12, 1.06, '(b)', transform=ax.transAxes, fontsize=11,
-            fontweight='bold')
-    save(fig, 'fig_ablation.png')
+    runpy.run_path(
+        str(ROOT / 'paper/figure_code/fig_ablation.py'),
+        run_name='__main__',
+    )
 
 
 def latent_figure(artifact):
-    """Plot held-out latent projections and the corresponding metrics."""
-    method_colours = {'none': '#8b95a5', 'analytic': '#e99b42',
-                      'discovered': COLORS['discovered']}
-    method_labels = {'none': 'No equation', 'analytic': 'Analytic NS',
-                     'discovered': 'PI-NoProp'}
-    fig, axes = plt.subplots(2, 2, figsize=(10.6, 7.0), constrained_layout=True)
-    for row, projection in enumerate(('pca', 'tsne')):
-        for col, region in enumerate(('low_enstrophy', 'high_enstrophy')):
-            ax = axes[row, col]
-            for method in ('none', 'analytic', 'discovered'):
-                points = artifact['points'][region][method]
-                xy = np.asarray(points[projection]); labels = np.asarray(points['labels'])
-                for cls in np.unique(labels):
-                    mask = labels == cls
-                    ax.scatter(xy[mask, 0], xy[mask, 1], s=10, alpha=.50,
-                               color=method_colours[method], marker=('o','s','^')[int(cls)%3],
-                               label=method_labels[method] if cls == np.unique(labels)[0] else None)
-            ax.set_title(('PCA' if projection == 'pca' else 't-SNE') +
-                         f' — {"Low" if col == 0 else "High"} enstrophy')
-            ax.set_xlabel(f'{projection.upper()} 1'); ax.set_ylabel(f'{projection.upper()} 2')
-            ax.grid(alpha=.16)
-            if row == 0 and col == 0: ax.legend(frameon=False, fontsize=8)
-    save(fig, 'fig_latent_analysis.png')
+    """Plot held-out latent projections using the standalone figure script."""
+    import runpy
+
+    runpy.run_path(
+        str(ROOT / 'paper/figure_code/fig_latent_analysis.py'),
+        run_name='__main__',
+    )
 
 
 def efficiency_figure(artifact):
@@ -716,40 +422,99 @@ def efficiency_figure(artifact):
         ax.set_xticks(x, labels, rotation=35, ha='right'); ax.set_ylabel(ylabel)
         ax.set_title(title); ax.grid(axis='y', alpha=.20); ax.grid(axis='x', visible=False)
         ax.legend(frameon=False, fontsize=8)
-    save(fig, 'fig_efficiency.png')
+    save(fig, 'fig_efficiency.pdf')
 
 
-def main():
-    style(); framework(); local_update()
-    manifest = json.loads((ROOT/'data/generated_hit_ns/manifest.json')
-                          .read_text(encoding='utf-8'))
-    artifact = json.loads((ROOT/'outputs/spider/full_ns_equation.json')
-                          .read_text(encoding='utf-8'))
-    dns_quality(manifest); data_samples(); spider_figure(artifact)
-    aggregate_path = ROOT/'outputs/aggregate/full_ns_results.json'
-    if aggregate_path.exists():
-        result_figures(json.loads(aggregate_path.read_text(encoding='utf-8')))
-        training_convergence_figure()
-    else:
-        print('Aggregate not present; discovery figures generated, result figures deferred.')
-    noise_path = ROOT/'outputs/aggregate/full_ns_noise.json'
-    if noise_path.exists():
-        noise_figure(json.loads(noise_path.read_text(encoding='utf-8')))
-    spider_noise_path = ROOT/'outputs/aggregate/full_ns_spider_noise.json'
-    if spider_noise_path.exists():
-        spider_noise_figure(json.loads(
-            spider_noise_path.read_text(encoding='utf-8')))
-    lambda_path = ROOT/'outputs/aggregate/full_ns_lambda_ablation.json'
-    decoder_path = ROOT/'outputs/aggregate/full_ns_decoder_ablation.json'
-    if lambda_path.exists() and decoder_path.exists():
-        ablation_figure(json.loads(lambda_path.read_text(encoding='utf-8')),
-                        json.loads(decoder_path.read_text(encoding='utf-8')))
-    latent_path = ROOT/'outputs/aggregate/full_ns_latent_analysis.json'
-    baseline_path = ROOT/'outputs/aggregate/full_ns_baselines.json'
-    if latent_path.exists():
-        latent_figure(json.loads(latent_path.read_text(encoding='utf-8')))
-    if baseline_path.exists():
-        efficiency_figure(json.loads(baseline_path.read_text(encoding='utf-8')))
+def build_parser() -> argparse.ArgumentParser:
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument(
+        '--protocol', choices=tuple(PROTOCOLS), default='v5',
+        help='v5: input32/target16, residual warm-start, lambda=0.1 (default); '
+             'old16: explicitly use legacy input16/target16, lambda=0.01',
+    )
+    return parser
+
+
+def required_sources(protocol: FigureProtocol = V5) -> tuple[Path, ...]:
+    """List dependencies of the cited figures, without legacy fallback."""
+    paths = [FIGURE_CODE/f'{name}.py' for name, _ in PAPER_FIGURES]
+    paths.extend(protocol.aggregate_path(suffix) for suffix in PAPER_AGGREGATES)
+    paths.extend((
+        ROOT/'data/generated_hit_ns/manifest.json',
+        ROOT/'data/generated_hit_ns/trajectory_000/frame_000.npz',
+        ROOT/'outputs/aggregate/full_ns_spider_noise.json',
+    ))
+    paths.extend(protocol.cache_path/name
+                 for name in ('metadata.json', 'fields.npy', 'regions.npy'))
+    for region in REGIONS:
+        for seed in SEEDS:
+            paths.extend(protocol.run_path(region, seed)/name
+                         for name in ('history.npz', 'metrics.json', 'config.json'))
+    return tuple(paths)
+
+
+def validate_cache_source(protocol: FigureProtocol = V5) -> None:
+    """Read cache metadata and NumPy headers only; never load fields onto a GPU."""
+    cache = protocol.cache_path
+    metadata = read_json(cache/'metadata.json')
+    input_size = metadata.get('input_spatial_size', metadata.get('spatial_size'))
+    target_size = metadata.get('target_spatial_size', metadata.get('spatial_size'))
+    if (input_size, target_size) != (protocol.input_size, protocol.target_size):
+        raise ValueError(f'{cache}: cache geometry does not match {protocol.name}')
+    if metadata.get('spatial_size', input_size) != input_size:
+        raise ValueError(f'{cache}: spatial_size disagrees with input_spatial_size')
+    fields = np.load(cache/'fields.npy', mmap_mode='r', allow_pickle=False)
+    regions = np.load(cache/'regions.npy', mmap_mode='r', allow_pickle=False)
+    if len(fields.shape) != 5 or fields.shape[1:] != (4,) + (protocol.input_size,)*3:
+        raise ValueError(f'{cache}: invalid input fields shape {fields.shape}')
+    if regions.shape != (fields.shape[0],):
+        raise ValueError(f'{cache}: regions do not match the input samples')
+    if metadata.get('n_samples', fields.shape[0]) != fields.shape[0]:
+        raise ValueError(f'{cache}: metadata sample count does not match fields')
+
+
+def preflight_sources(protocol: FigureProtocol = V5) -> None:
+    """Fail before rendering any PDF if selected-protocol inputs are missing."""
+    missing = [path for path in required_sources(protocol) if not path.is_file()]
+    if missing:
+        raise FileNotFoundError(
+            f'Missing {protocol.name} figure sources (no legacy fallback):\n'
+            + '\n'.join(str(path) for path in missing)
+        )
+    for suffix in PAPER_AGGREGATES:
+        load_aggregate(protocol, suffix)
+    validate_cache_source(protocol)
+    for region in REGIONS:
+        for seed in SEEDS:
+            run = protocol.run_path(region, seed)
+            metrics = read_json(run/'metrics.json')
+            validate_metadata(protocol, metrics, run/'metrics.json')
+            if (metrics.get('region'), metrics.get('seed'), metrics.get('physics_source')) != (
+                region, seed, 'discovered'):
+                raise ValueError(f'{run}: mismatched training-run identity')
+            config = read_json(run/'config.json')
+            validate_metadata(protocol, {
+                'input_spatial_size': config['data']['subdomain_size'],
+                'target_spatial_size': config['data'].get('target_subdomain_size')
+                                       or config['data']['subdomain_size'],
+                'spatial_context_mode': config['noprop'].get('spatial_context_mode', 'single'),
+                'lambda_weight': config['physics']['lambda_weight'],
+            }, run/'config.json')
+
+
+def main(argv: list[str] | None = None) -> None:
+    args = build_parser().parse_args(argv)
+    protocol = PROTOCOLS[args.protocol]
+    preflight_sources(protocol)
+    # Separate processes keep each figure's tuned rcParams and CLI isolated.
+    # A failing child propagates; no historical renderer or source is retried.
+    for name, uses_protocol in PAPER_FIGURES:
+        command = [sys.executable, '-B', str(FIGURE_CODE/f'{name}.py')]
+        if uses_protocol:
+            command.extend(('--protocol', protocol.name))
+        print(f'Rendering {name} ({protocol.name if uses_protocol else "DNS64"})',
+              flush=True)
+        subprocess.run(command, cwd=ROOT, check=True)
 
 
 if __name__ == '__main__':

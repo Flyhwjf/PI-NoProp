@@ -1,0 +1,188 @@
+{
+  "schema_version": 5,
+  "protocol": {
+    "prefix": "full_ns_v5_input32_target16_residual_warmstart",
+    "input_spatial_size": 32,
+    "target_spatial_size": 16,
+    "spatial_context_mode": "residual_warmstart",
+    "lambda_weight": 0.1,
+    "cache_dir": "data/cache_hit_ns_input32_target16",
+    "seeds": [
+      42,
+      123,
+      456
+    ],
+    "region": "low_enstrophy",
+    "trajectory_disjoint": true,
+    "model_revision": "cached-residual-warmstart-physics-condition-prototype-readout",
+    "readout": "cosine similarity to frozen label embeddings",
+    "run_ids": {
+      "ns": [
+        "full_ns_v5_input32_target16_residual_warmstart_discovered_low_enstrophy_lambda0p1_seed42_eqablation",
+        "full_ns_v5_input32_target16_residual_warmstart_discovered_low_enstrophy_lambda0p1_seed123_eqablation",
+        "full_ns_v5_input32_target16_residual_warmstart_discovered_low_enstrophy_lambda0p1_seed456_eqablation"
+      ],
+      "ns_pp": [
+        "full_ns_v5_input32_target16_residual_warmstart_discovered_low_enstrophy_lambda0p1_seed42_ns_pp_eqablation",
+        "full_ns_v5_input32_target16_residual_warmstart_discovered_low_enstrophy_lambda0p1_seed123_ns_pp_eqablation",
+        "full_ns_v5_input32_target16_residual_warmstart_discovered_low_enstrophy_lambda0p1_seed456_ns_pp_eqablation"
+      ],
+      "full": [
+        "full_ns_v5_input32_target16_residual_warmstart_discovered_low_enstrophy_lambda0p1_seed42_full_eqablation",
+        "full_ns_v5_input32_target16_residual_warmstart_discovered_low_enstrophy_lambda0p1_seed123_full_eqablation",
+        "full_ns_v5_input32_target16_residual_warmstart_discovered_low_enstrophy_lambda0p1_seed456_full_eqablation"
+      ]
+    },
+    "shared_condition_and_decoder_verified": true,
+    "condition_matching": "bitwise checkpoint verification within each seed across ns/ns_pp/full of full encoder, physics condition, fusion, prototypes, normalization buffers and all decoder parameters/buffers",
+    "ns_control": "separately executed, same seeds/settings as main",
+    "relations": {
+      "ns": "discovered momentum + continuity",
+      "ns_pp": "NS + artifact-derived pressure-Poisson",
+      "full": "NS + pressure-Poisson + artifact-derived energy balance"
+    }
+  },
+  "results": {
+    "ns": {
+      "accuracy": {
+        "values": [
+          87.96296296296296,
+          85.18518518518519,
+          87.96296296296296
+        ],
+        "mean": 87.03703703703702,
+        "std": 1.6037507477489568
+      },
+      "eta_ns": {
+        "values": [
+          0.1736467219889164,
+          0.2257133536040783,
+          0.19802280142903328
+        ],
+        "mean": 0.19912762567400932,
+        "std": 0.02605089267945456
+      },
+      "eta_div": {
+        "values": [
+          0.10484668612480164,
+          0.1749129220843315,
+          0.166579008102417
+        ],
+        "mean": 0.14877953877051672,
+        "std": 0.03827447173713928
+      },
+      "eta_pp": {
+        "values": [
+          0.7952597737312317,
+          0.402423232793808,
+          0.7577797770500183
+        ],
+        "mean": 0.6518209278583527,
+        "std": 0.216796206759797
+      },
+      "eta_energy": {
+        "values": [
+          0.4971158728003502,
+          0.49518874287605286,
+          0.48632558435201645
+        ],
+        "mean": 0.4928767333428065,
+        "std": 0.005754704359124599
+      }
+    },
+    "ns_pp": {
+      "accuracy": {
+        "values": [
+          88.88888888888889,
+          86.11111111111111,
+          87.03703703703704
+        ],
+        "mean": 87.34567901234568,
+        "std": 1.41437521449254
+      },
+      "eta_ns": {
+        "values": [
+          0.1902407705783844,
+          0.25283632799983025,
+          0.25421707332134247
+        ],
+        "mean": 0.2324313906331857,
+        "std": 0.03654467033463527
+      },
+      "eta_div": {
+        "values": [
+          0.10075672343373299,
+          0.14795877411961555,
+          0.16042485460639
+        ],
+        "mean": 0.1363801173865795,
+        "std": 0.03147412331130863
+      },
+      "eta_pp": {
+        "values": [
+          0.14029954932630062,
+          0.1814919374883175,
+          0.1857360452413559
+        ],
+        "mean": 0.169175844018658,
+        "std": 0.02509747814073658
+      },
+      "eta_energy": {
+        "values": [
+          0.5817765444517136,
+          0.20943112671375275,
+          0.5613904446363449
+        ],
+        "mean": 0.45086603860060376,
+        "std": 0.20933707453477793
+      }
+    },
+    "full": {
+      "accuracy": {
+        "values": [
+          89.81481481481481,
+          85.18518518518519,
+          86.11111111111111
+        ],
+        "mean": 87.03703703703702,
+        "std": 2.449769732467208
+      },
+      "eta_ns": {
+        "values": [
+          0.1867474429309368,
+          0.1862691007554531,
+          0.25541534647345543
+        ],
+        "mean": 0.20947729671994844,
+        "std": 0.03978423700633171
+      },
+      "eta_div": {
+        "values": [
+          0.1295752003788948,
+          0.13883671537041664,
+          0.1274549551308155
+        ],
+        "mean": 0.13195562362670898,
+        "std": 0.0060527619866464245
+      },
+      "eta_pp": {
+        "values": [
+          0.1689535193145275,
+          0.18993807211518288,
+          0.15434721857309341
+        ],
+        "mean": 0.17107960333426794,
+        "std": 0.017890427298079336
+      },
+      "eta_energy": {
+        "values": [
+          0.27375639975070953,
+          0.18928346037864685,
+          0.27943557873368263
+        ],
+        "mean": 0.24749181295434633,
+        "std": 0.05048982571432453
+      }
+    }
+  }
+}

@@ -63,11 +63,34 @@ def _quantile_edges(values: np.ndarray, n_classes: int) -> np.ndarray:
     return edges
 
 
+def _periodic_spatial_crop(values: np.ndarray, starts: np.ndarray,
+                           size: int) -> np.ndarray:
+    """Crop the final three axes with periodic wrapping.
+
+    The generated HIT domain is periodic.  Using wrapped context allows a
+    larger input cube to remain centred on the exact smaller target cube even
+    when that target lies near a box boundary.
+    """
+    output = values
+    for axis, start in zip(range(values.ndim-3, values.ndim), starts):
+        indices = (np.arange(size)+int(start)) % values.shape[axis]
+        output = np.take(output, indices, axis=axis)
+    return output
+
+
 def build_learning_cache(dataset_dir='data/generated_hit_ns',
                          cache_dir='data/cache_hit_ns',
                          samples_per_trajectory=64, spatial_size=16,
                          time_window=9, n_classes=5, seed=31415,
-                         overwrite=False):
+                         overwrite=False, target_spatial_size=None):
+    input_spatial_size = int(spatial_size)
+    target_spatial_size = int(
+        input_spatial_size if target_spatial_size is None
+        else target_spatial_size)
+    if input_spatial_size < target_spatial_size:
+        raise ValueError('input spatial size must be at least the target size')
+    if (input_spatial_size-target_spatial_size) % 2:
+        raise ValueError('input and target sizes must have an even difference')
     source = Path(dataset_dir)
     destination = Path(cache_dir)
     destination.mkdir(parents=True, exist_ok=True)
@@ -76,7 +99,32 @@ def build_learning_cache(dataset_dir='data/generated_hit_ns',
         'fields.npy', 'sequences.npy', 'labels.npy', 'splits.npy',
         'regions.npy', 'trajectory_ids.npy', 'ns_terms.npy', 'stats.npz')]
     if not overwrite and metadata_path.exists() and all(path.exists() for path in required):
-        return json.loads(metadata_path.read_text(encoding='utf-8'))
+        metadata = json.loads(metadata_path.read_text(encoding='utf-8'))
+        cached_input = int(metadata.get(
+            'input_spatial_size', metadata.get('spatial_size', -1)))
+        cached_target = int(metadata.get(
+            'target_spatial_size', metadata.get('spatial_size', -1)))
+        requested = {
+            'samples_per_trajectory': int(samples_per_trajectory),
+            'input_spatial_size': input_spatial_size,
+            'target_spatial_size': target_spatial_size,
+            'time_window': int(time_window),
+            'n_classes': int(n_classes),
+            'seed': int(seed),
+        }
+        cached = {
+            'samples_per_trajectory': int(metadata['samples_per_trajectory']),
+            'input_spatial_size': cached_input,
+            'target_spatial_size': cached_target,
+            'time_window': int(metadata['time_window']),
+            'n_classes': int(metadata['n_classes']),
+            'seed': int(metadata['seed']),
+        }
+        if cached != requested:
+            raise ValueError(
+                f'cache {destination} was built with {cached}, requested '
+                f'{requested}; select a different cache directory or use overwrite')
+        return metadata
 
     manifest = json.loads((source/'manifest.json').read_text(encoding='utf-8'))
     rng = np.random.default_rng(seed)
@@ -97,22 +145,42 @@ def build_learning_cache(dataset_dir='data/generated_hit_ns',
         dx = float(record['config']['box_length'])/n
         for _ in range(samples_per_trajectory):
             t0 = int(rng.integers(0, len(files)-time_window+1))
-            starts = rng.integers(0, n-spatial_size+1, size=3)
-            xyz = tuple(slice(int(start), int(start)+spatial_size) for start in starts)
-            u = velocity[(slice(t0, t0+time_window), slice(None))+xyz]
-            p = pressure[(slice(t0, t0+time_window),)+xyz]
-            sequence = np.concatenate([u, p[:, None]], axis=1).astype(np.float32)
-            initial_energy = 0.5*np.mean(np.sum(u[0]**2, axis=0))
-            final_energy = 0.5*np.mean(np.sum(u[-1]**2, axis=0))
+            target_starts = rng.integers(
+                0, n-target_spatial_size+1, size=3)
+            target_xyz = tuple(
+                slice(int(start), int(start)+target_spatial_size)
+                for start in target_starts)
+            target_u = velocity[
+                (slice(t0, t0+time_window), slice(None))+target_xyz]
+            target_p = pressure[(slice(t0, t0+time_window),)+target_xyz]
+            sequence = np.concatenate(
+                [target_u, target_p[:, None]], axis=1).astype(np.float32)
+
+            context_offset = (input_spatial_size-target_spatial_size)//2
+            input_starts = target_starts-context_offset
+            input_velocity = _periodic_spatial_crop(
+                velocity[t0], input_starts, input_spatial_size)
+            input_pressure = _periodic_spatial_crop(
+                pressure[t0], input_starts, input_spatial_size)
+            input_field = np.concatenate(
+                [input_velocity, input_pressure[None]], axis=0).astype(np.float32)
+
+            initial_energy = 0.5*np.mean(np.sum(target_u[0]**2, axis=0))
+            final_energy = 0.5*np.mean(np.sum(target_u[-1]**2, axis=0))
             relative_decay = float((initial_energy-final_energy)
                                    / max(initial_energy, 1e-12))
             samples.append({
+                'field': input_field,
                 'sequence': sequence,
-                'enstrophy': _local_enstrophy(u[0].astype(np.float64), dx),
+                'enstrophy': _local_enstrophy(
+                    target_u[0].astype(np.float64), dx),
                 'ns_terms': _ns_energy_terms(sequence[0], dx),
                 'target': relative_decay,
                 'split': SPLIT_CODE[record['split']],
                 'trajectory_id': trajectory_id,
+                'time_start': t0,
+                'target_starts': target_starts.astype(np.int16),
+                'input_starts': input_starts.astype(np.int16),
             })
 
     discovery = np.asarray([sample['split'] == SPLIT_CODE['discovery']
@@ -132,7 +200,7 @@ def build_learning_cache(dataset_dir='data/generated_hit_ns',
 
     sequences = np.stack([sample['sequence'] for sample in samples])
     ns_terms = np.stack([sample['ns_terms'] for sample in samples])
-    fields = sequences[:, 0]
+    fields = np.stack([sample['field'] for sample in samples])
     train_sequences = sequences[discovery].astype(np.float64)
     means = train_sequences.mean(axis=(0, 1, 3, 4, 5)).astype(np.float32)
     stds = train_sequences.std(axis=(0, 1, 3, 4, 5)).astype(np.float32)
@@ -145,6 +213,12 @@ def build_learning_cache(dataset_dir='data/generated_hit_ns',
     np.save(destination/'trajectory_ids.npy',
             np.asarray([s['trajectory_id'] for s in samples], dtype=np.int16))
     np.save(destination/'ns_terms.npy', ns_terms)
+    np.save(destination/'time_starts.npy',
+            np.asarray([s['time_start'] for s in samples], dtype=np.int16))
+    np.save(destination/'target_starts.npy',
+            np.stack([s['target_starts'] for s in samples]))
+    np.save(destination/'input_starts.npy',
+            np.stack([s['input_starts'] for s in samples]))
     term_means = ns_terms[discovery].mean(axis=0, dtype=np.float64)
     term_covariance = np.cov(ns_terms[discovery].astype(np.float64), rowvar=False)
     np.savez(destination/'stats.npz', means=means, stds=stds,
@@ -158,11 +232,18 @@ def build_learning_cache(dataset_dir='data/generated_hit_ns',
         'source_manifest': str((source/'manifest.json').resolve()),
         'n_samples': len(samples),
         'samples_per_trajectory': samples_per_trajectory,
-        'spatial_size': spatial_size,
+        # ``spatial_size`` remains the input size for compatibility with
+        # existing diagnostics.  Explicit fields remove any ambiguity for
+        # context-input caches.
+        'spatial_size': input_spatial_size,
+        'input_spatial_size': input_spatial_size,
+        'target_spatial_size': target_spatial_size,
         'time_window': time_window,
         'n_classes': n_classes,
-        'input': 'first velocity-pressure frame',
-        'target': 'future local relative kinetic-energy decay quantile',
+        'input': 'first velocity-pressure frame from the context cube',
+        'target': 'future local relative kinetic-energy decay quantile '
+                  'on the centred target cube',
+        'context_boundary': 'periodic wrap on the generated HIT box',
         'region_definition': 'discovery-set median initial local enstrophy',
         'enstrophy_threshold': threshold,
         'class_edges': class_edges,
@@ -239,6 +320,7 @@ def create_hit_dataloaders(config):
         spatial_size=config.data.subdomain_size,
         time_window=config.physics.n_time,
         n_classes=config.data.n_classes,
+        target_spatial_size=config.data.target_subdomain_size,
     )
     stats = np.load(Path(config.data.cache_dir)/'stats.npz')
     config.data.ns_term_means = np.asarray(
